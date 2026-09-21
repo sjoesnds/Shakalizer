@@ -1292,7 +1292,7 @@ void ShakalizerAudioProcessorEditor::savePresetToFile()
             }
 
         },
-        this);
+        nullptr);
 }
 
 void ShakalizerAudioProcessorEditor::loadPresetFromFile()
