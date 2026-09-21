@@ -61,13 +61,14 @@ private:
     };
 
     std::array<juce::dsp::StateVariableTPTFilter<float>, 2> postFilter;
+    std::array<juce::dsp::StateVariableTPTFilter<float>, 2> safetyFilter;
 
     std::array<int, 2> holdRemaining { 0, 0 };
     std::array<int, 2> currentHoldLength { 1, 1 };
     std::array<float, 2> heldSample { 0.0f, 0.0f };
     std::array<float, 2> previousHeldSample { 0.0f, 0.0f };
 
-    // Four spectral crossover states per channel.
+    // Four inexpensive broad spectral bands.
     std::array<float, 2> splitLow1 { 0.0f, 0.0f };
     std::array<float, 2> splitLow2 { 0.0f, 0.0f };
     std::array<float, 2> splitLow3 { 0.0f, 0.0f };
@@ -79,21 +80,21 @@ private:
     std::array<int, 2> glitchRemaining { 0, 0 };
     std::array<int, 2> glitchCooldown { 0, 0 };
 
-    // Simple resonator/comb memory.
     std::array<std::array<float, 8192>, 2> resonatorBuffer {};
     int resonatorWriteIndex = 0;
 
     float movementPhase = 0.0f;
     float syncPhase = 0.0f;
+    float movementHoldValue = 0.0f;
+    int movementHoldCounter = 0;
     int lastGlitchGridSlot = -1;
-    float glitchGridPhase = 0.0f;
+
     float unstableValue = 0.0f;
     int unstableRemaining = 0;
 
     std::array<float, 2> alienPhase { 0.0f, 0.0f };
 
     float autoMatchGain = 1.0f;
-    float meterRelease = 0.92f;
 
     std::uint32_t rngState = 0xA341316Cu;
     std::atomic<float> meterLevel { 0.0f };
