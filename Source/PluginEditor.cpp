@@ -297,15 +297,15 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
     : AudioProcessorEditor(&p),
       processor(p),
       modSourceBoxes {
-          &modSource1Box,
-          &modSource2Box,
-          &modSource3Box,
-          &modSource4Box },
+          &modSource1Box, &modSource2Box,
+          &modSource3Box, &modSource4Box,
+          &modSource5Box, &modSource6Box,
+          &modSource7Box, &modSource8Box },
       modDestBoxes {
-          &modDest1Box,
-          &modDest2Box,
-          &modDest3Box,
-          &modDest4Box }
+          &modDest1Box, &modDest2Box,
+          &modDest3Box, &modDest4Box,
+          &modDest5Box, &modDest6Box,
+          &modDest7Box, &modDest8Box }
 {
     setLookAndFeel(&lookAndFeel);
     setResizable(true, true);
@@ -395,6 +395,9 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
     liveSceneBox.addItemList(
         { "Normal", "Impact", "Glitch",
           "Melt", "Broken", "Chaos" }, 1);
+    characterModeBox.addItemList(
+        { "Neutral", "Digital", "VHS", "Console", "Radio",
+          "Metallic", "Broken", "Alien", "Cheap DAC", "Corrupt" }, 1);
 
     for (auto* box : {
         &presetBox, &modeBox, &resampleBox, &filterBox,
@@ -402,7 +405,7 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         &glitchGridBox, &glitchModeBox, &glitchLengthBox,
         &spectralModeBox, &modWaveBox, &modSyncBox,
         &routingBox, &msModeBox,
-        &liveSceneBox })
+        &liveSceneBox, &characterModeBox })
     {
         addAndMakeVisible(*box);
     }
@@ -482,6 +485,11 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
             juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
                 processor.getAPVTS(), "liveScene", liveSceneBox);
 
+    characterModeAttachment =
+        std::make_unique<
+            juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+                processor.getAPVTS(), "characterMode", characterModeBox);
+
 
     presetBox.onChange = [this]
     {
@@ -503,7 +511,7 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         "Fold", "Shift", "Glitch", "Filter"
     };
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 8; ++i)
     {
         modSourceBoxes[
             static_cast<size_t>(i)]
@@ -710,7 +718,14 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         "spectralRing",
         "modRate", "modDepth", "modSmooth",
         "smartAmount", "smartBassProtect",
-        "smartTransientProtect", "smartHighControl"
+        "smartTransientProtect", "smartHighControl",
+        "mod5Amount", "mod6Amount", "mod7Amount", "mod8Amount",
+        "fftMix", "fftShatter", "fftFreeze", "fftBits", "fftShift",
+        "grainMix", "grainSize", "grainPitch", "grainJitter",
+        "feedback", "feedbackTone", "feedbackDrive", "pitchChaos",
+        "timelineMix", "timelineStep1", "timelineStep2", "timelineStep3",
+        "timelineStep4", "timelineStep5", "timelineStep6", "timelineStep7",
+        "timelineStep8"
     }};
 
     for (int i = 0;
@@ -756,6 +771,18 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
             min = 0.05;
             max = 20.0;
             step = 0.01;
+        }
+        else if (i >= 52 && i <= 55)
+        {
+            min = -1.0;
+            max = 1.0;
+            step = 0.001;
+        }
+        else if (i == 60)
+        {
+            min = -1.0;
+            max = 1.0;
+            step = 0.001;
         }
 
         configureSlider(
@@ -922,6 +949,33 @@ void ShakalizerAudioProcessorEditor::paint(
             scope.reduced(0.5f),
             9.0f,
             1.0f);
+
+        // FFT spectrum telemetry behind the waveform.
+        const int spectrumBars = 32;
+        const float spectrumBottom = scope.getBottom() - 36.0f;
+
+        for (int bin = 0; bin < spectrumBars; ++bin)
+        {
+            const float level =
+                juce::jlimit(
+                    0.0f,
+                    1.0f,
+                    processor.getSpectrumBin(bin * 2));
+
+            const float barW =
+                scope.getWidth()
+                / static_cast<float>(spectrumBars);
+
+            g.setColour(
+                accent.withAlpha(
+                    0.05f + level * 0.18f));
+
+            g.fillRect(
+                scope.getX() + bin * barW,
+                spectrumBottom - level * (scope.getHeight() * 0.55f),
+                barW - 1.0f,
+                level * (scope.getHeight() * 0.55f));
+        }
 
         juce::Path wave;
         const int count = 256;
@@ -1309,13 +1363,22 @@ void ShakalizerAudioProcessorEditor::resized()
         215,
         165);
 
+    characterModeBox.setBounds(
+        48,
+        352,
+        198,
+        28);
+
     const int left = 315;
     const int top = 140;
     const int availableWidth =
         w - left - 35;
 
     const int cols = 7;
-    const int rows = 8;
+    const int rows =
+        juce::jmax(
+            1,
+            (sliderCount - 1 + cols - 1) / cols);
     const int gap = 4;
 
     const int cellW =
@@ -1363,11 +1426,11 @@ void ShakalizerAudioProcessorEditor::resized()
     const int modY = 408;
 
     for (int i = 0;
-         i < 4;
+         i < 8;
          ++i)
     {
         const int y =
-            modY + i * 91;
+            modY + i * 69;
 
         modSourceBoxes[
             static_cast<size_t>(i)]
@@ -1390,9 +1453,9 @@ void ShakalizerAudioProcessorEditor::resized()
                 31 + i)]
             ->setBounds(
                 45,
-                y + 31,
+                y + 30,
                 198,
-                52);
+                37);
     }
 
     meter.setBounds(
@@ -1456,6 +1519,25 @@ void ShakalizerAudioProcessorEditor::timerCallback()
             cpu,
             1)
         + "%",
+        juce::dontSendNotification);
+
+    const float glitchActivity =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            processor.getGlitchActivity());
+
+    const float modActivity =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            processor.getModulationActivity());
+
+    subtitleLabel.setText(
+        "DESTRUCTION "
+        + juce::String(glitchActivity * 100.0f, 0)
+        + "%  MOD "
+        + juce::String(modActivity * 100.0f, 0) + "%",
         juce::dontSendNotification);
 
     repaint();
@@ -1693,7 +1775,7 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
     };
 
     const std::array<
-        const char*, 22> glitch {
+        const char*, 43> glitch {
         "glitch", "jitter", "movement",
         "unstable", "stereo", "alien",
         "glitchMode", "glitchLength",
@@ -1703,7 +1785,13 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
         "mod3Amount", "mod4Amount",
         "morph", "mix",
         "smartAmount", "smartBassProtect",
-        "smartTransientProtect", "smartHighControl"
+        "smartTransientProtect", "smartHighControl",
+        "fftMix", "fftShatter", "fftFreeze", "fftBits", "fftShift",
+        "grainMix", "grainSize", "grainPitch", "grainJitter",
+        "feedback", "feedbackTone", "feedbackDrive", "pitchChaos",
+        "timelineMix", "timelineStep1", "timelineStep2", "timelineStep3",
+        "timelineStep4", "timelineStep5", "timelineStep6", "timelineStep7",
+        "timelineStep8", "characterMode"
     };
 
     const auto randomizeIds =
@@ -1722,13 +1810,14 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
     };
 
     const std::array<
-        const char*, 13> modulation {
-        "mod1Amount", "mod2Amount",
-        "mod3Amount", "mod4Amount",
+        const char*, 26> modulation {
+        "mod1Amount", "mod2Amount", "mod3Amount", "mod4Amount",
+        "mod5Amount", "mod6Amount", "mod7Amount", "mod8Amount",
         "modRate", "modDepth", "modSmooth",
         "modWave", "modSync",
-        "smartAmount", "smartBassProtect",
-        "smartTransientProtect", "smartHighControl"
+        "fftMix", "fftShatter", "fftFreeze", "fftBits", "fftShift",
+        "grainMix", "grainSize", "grainPitch", "grainJitter",
+        "feedback", "feedbackTone", "feedbackDrive", "pitchChaos"
     };
 
     if (scope == 1)
@@ -1791,7 +1880,7 @@ void ShakalizerAudioProcessorEditor::loadPreset(
                 id,
                 amount);
 
-        for (int i = 1; i <= 4; ++i)
+        for (int i = 1; i <= 8; ++i)
         {
             setNormalised(
                 processor,
@@ -1852,7 +1941,7 @@ void ShakalizerAudioProcessorEditor::loadPreset(
         setChoice(
             processor, "liveScene", 0, 6);
 
-        for (int i = 1; i <= 4; ++i)
+        for (int i = 1; i <= 8; ++i)
         {
             setChoice(
                 processor,
@@ -1880,6 +1969,28 @@ void ShakalizerAudioProcessorEditor::loadPreset(
             processor,
             "smart",
             false);
+
+        setChoice(processor, "characterMode", 0, 10);
+        setNormalised(processor, "fftMix", 0.0f);
+        setNormalised(processor, "fftShatter", 0.0f);
+        setNormalised(processor, "fftFreeze", 0.0f);
+        setNormalised(processor, "fftBits", 0.0f);
+        setNormalised(processor, "fftShift", 0.0f);
+        setNormalised(processor, "grainMix", 0.0f);
+        setNormalised(processor, "grainSize", 0.28f);
+        setNormalised(processor, "grainPitch", 0.50f);
+        setNormalised(processor, "grainJitter", 0.10f);
+        setNormalised(processor, "feedback", 0.0f);
+        setNormalised(processor, "feedbackTone", 0.48f);
+        setNormalised(processor, "feedbackDrive", 0.16f);
+        setNormalised(processor, "pitchChaos", 0.0f);
+        setNormalised(processor, "timelineMix", 0.0f);
+
+        for (int i = 1; i <= 8; ++i)
+            setNormalised(
+                processor,
+                ("timelineStep" + juce::String(i)).toRawUTF8(),
+                (i == 1 || i == 5) ? 0.85f : 0.0f);
     };
 
     base();
