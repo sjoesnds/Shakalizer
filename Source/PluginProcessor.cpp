@@ -486,7 +486,7 @@ void ShakalizerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
             }
 
             const float glitchProbability =
-                effectiveGlitch > 0.0f
+                glitch > 0.0f
                     ? (glitch * (0.05f + intensityBase) * 0.00010f)
                     : 0.0f;
 
