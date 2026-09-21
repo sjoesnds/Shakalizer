@@ -1,5 +1,9 @@
 name: Build Shakalizer
 
+concurrency:
+  group: shakalizer-build
+  cancel-in-progress: true
+
 on:
   push:
     paths:
