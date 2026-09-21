@@ -47,7 +47,7 @@ private:
         float level = 0.0f;
     };
 
-    static constexpr int sliderCount = 36;
+    static constexpr int sliderCount = 48;
 
     void configureSlider(juce::Slider&, const juce::String&,
                          double min, double max, double step);
@@ -164,6 +164,21 @@ private:
     juce::Slider mod4AmountSlider;
     juce::Slider morphSlider;
 
+    juce::Slider glitchDensitySlider;
+    juce::Slider glitchProbabilitySlider;
+    juce::Slider glitchFadeSlider;
+    juce::Slider glitchVariationSlider;
+
+    juce::Slider spectralMixSlider;
+    juce::Slider spectralSmearSlider;
+    juce::Slider spectralFreezeAmountSlider;
+    juce::Slider spectralBitsSlider;
+    juce::Slider spectralRingSlider;
+
+    juce::Slider modRateSlider;
+    juce::Slider modDepthSlider;
+    juce::Slider modSmoothSlider;
+
     std::array<juce::Slider*, sliderCount> sliders {
         &shakalSlider, &destroySlider, &crushSlider, &decimateSlider,
         &driveSlider, &clipSlider, &glitchSlider, &jitterSlider,
@@ -175,7 +190,13 @@ private:
         &bandHighSlider, &bandAirSlider, &characterSlider,
         &preGainSlider, &smoothSlider,
         &mod1AmountSlider, &mod2AmountSlider,
-        &mod3AmountSlider, &mod4AmountSlider, &morphSlider
+        &mod3AmountSlider, &mod4AmountSlider, &morphSlider,
+        &glitchDensitySlider, &glitchProbabilitySlider,
+        &glitchFadeSlider, &glitchVariationSlider,
+        &spectralMixSlider, &spectralSmearSlider,
+        &spectralFreezeAmountSlider, &spectralBitsSlider,
+        &spectralRingSlider,
+        &modRateSlider, &modDepthSlider, &modSmoothSlider
     };
 
     std::array<juce::String, sliderCount> sliderNames {
@@ -187,7 +208,11 @@ private:
         "FOLD", "SHIFT", "RESONATOR", "ENVELOPE",
         "LOW SHATTER", "MID SHATTER", "HIGH SHATTER",
         "AIR SHATTER", "CHARACTER", "PRE GAIN", "SMOOTH",
-        "MOD 1", "MOD 2", "MOD 3", "MOD 4", "MORPH"
+        "MOD 1", "MOD 2", "MOD 3", "MOD 4", "MORPH",
+        "GLITCH DENSITY", "GLITCH PROB", "GLITCH FADE",
+        "GLITCH VAR", "SPECTRAL MIX", "SPECTRAL SMEAR",
+        "SPECTRAL FREEZE", "SPECTRAL BITS", "SPECTRAL RING",
+        "MOD RATE", "MOD DEPTH", "MOD SMOOTH"
     };
 
     std::vector<std::unique_ptr<
