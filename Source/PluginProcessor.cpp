@@ -10,13 +10,6 @@ float clamp01(float v)
     return juce::jlimit(0.0f, 1.0f, v);
 }
 
-float onePoleAlpha(float cutoff, double sampleRate)
-{
-    return std::exp(
-        -2.0f * juce::MathConstants<float>::pi
-        * cutoff / static_cast<float>(sampleRate));
-}
-
 int choiceIndex(juce::AudioProcessorValueTreeState& state,
                 const juce::String& id,
                 int fallback)
@@ -24,164 +17,289 @@ int choiceIndex(juce::AudioProcessorValueTreeState& state,
     if (auto* parameter =
             dynamic_cast<const juce::AudioParameterChoice*>(
                 state.getParameter(id)))
+    {
         return parameter->getIndex();
+    }
 
     return fallback;
 }
 
+float onePoleAlpha(float cutoff, double sampleRate)
+{
+    return std::exp(
+        -2.0f * pi
+        * cutoff
+        / static_cast<float>(sampleRate));
+}
+
 float softCeiling(float x, float amount)
 {
-    const float drive = 1.0f + amount * 0.8f;
-    return std::tanh(x * drive)
-        / std::tanh(drive);
+    const float strength = 1.0f + amount * 1.2f;
+    return std::tanh(x * strength) / std::tanh(strength);
+}
+
+float bipolarToUnit(float x)
+{
+    return 0.5f + 0.5f * juce::jlimit(-1.0f, 1.0f, x);
 }
 }
 
 ShakalizerAudioProcessor::ShakalizerAudioProcessor()
-    : AudioProcessor(BusesProperties()
-        .withInput("Input", juce::AudioChannelSet::stereo(), true)
-        .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts(*this, nullptr, "PARAMETERS", createParameterLayout())
+    : AudioProcessor(
+        BusesProperties()
+            .withInput(
+                "Input",
+                juce::AudioChannelSet::stereo(),
+                true)
+            .withOutput(
+                "Output",
+                juce::AudioChannelSet::stereo(),
+                true)),
+      apvts(
+          *this,
+          nullptr,
+          "PARAMETERS",
+          createParameterLayout())
 {
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout
 ShakalizerAudioProcessor::createParameterLayout()
 {
-    using FloatRange = juce::NormalisableRange<float>;
-    std::vector<std::unique_ptr<juce::RangedAudioParameter>> p;
+    using FloatRange =
+        juce::NormalisableRange<float>;
+
+    std::vector<
+        std::unique_ptr<
+            juce::RangedAudioParameter>> p;
 
     // Core.
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "shakal", "Shakal", FloatRange(0.0f, 1.0f, 0.001f), 0.50f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "destroy", "Destroy", FloatRange(0.0f, 1.0f, 0.001f), 0.42f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "crush", "Crush", FloatRange(0.0f, 1.0f, 0.001f), 0.34f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "decimate", "Decimate", FloatRange(0.0f, 1.0f, 0.001f), 0.28f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "drive", "Drive", FloatRange(0.0f, 1.0f, 0.001f), 0.30f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "clip", "Clip", FloatRange(0.0f, 1.0f, 0.001f), 0.20f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "glitch", "Glitch", FloatRange(0.0f, 1.0f, 0.001f), 0.08f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "jitter", "Jitter", FloatRange(0.0f, 1.0f, 0.001f), 0.08f));
+    const auto addFloat =
+        [&p](const char* id,
+             const char* name,
+             float min,
+             float max,
+             float step,
+             float value)
+    {
+        p.push_back(
+            std::make_unique<
+                juce::AudioParameterFloat>(
+                    id,
+                    name,
+                    FloatRange(
+                        min,
+                        max,
+                        step),
+                    value));
+    };
 
-    // Dynamics / stereo.
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "split", "Split", FloatRange(0.0f, 1.0f, 0.001f), 0.56f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "transient", "Transient", FloatRange(0.0f, 1.0f, 0.001f), 0.74f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "body", "Body", FloatRange(0.0f, 1.0f, 0.001f), 0.55f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "stereo", "Stereo", FloatRange(0.0f, 1.0f, 0.001f), 0.18f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "movement", "Movement", FloatRange(0.0f, 1.0f, 0.001f), 0.14f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "unstable", "Unstable", FloatRange(0.0f, 1.0f, 0.001f), 0.06f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "alien", "Alien", FloatRange(0.0f, 1.0f, 0.001f), 0.02f));
+    addFloat("shakal", "Shakal", 0, 1, 0.001f, 0.50f);
+    addFloat("destroy", "Destroy", 0, 1, 0.001f, 0.42f);
+    addFloat("crush", "Crush", 0, 1, 0.34f * 1.0f, 0.34f);
+    addFloat("decimate", "Decimate", 0, 1, 0.001f, 0.28f);
+    addFloat("drive", "Drive", 0, 1, 0.001f, 0.30f);
+    addFloat("clip", "Clip", 0, 1, 0.001f, 0.20f);
+    addFloat("glitch", "Glitch", 0, 1, 0.001f, 0.08f);
+    addFloat("jitter", "Jitter", 0, 1, 0.001f, 0.08f);
 
-    // Output/filter.
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "filterFreq", "Filter Frequency",
-        FloatRange(80.0f, 18000.0f, 1.0f, 0.35f), 14500.0f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "filterRes", "Filter Resonance",
-        FloatRange(0.05f, 0.95f, 0.001f), 0.30f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "mix", "Mix", FloatRange(0.0f, 1.0f, 0.001f), 0.76f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "output", "Output", FloatRange(-12.0f, 6.0f, 0.01f), -1.5f));
+    addFloat("split", "Split", 0, 1, 0.001f, 0.56f);
+    addFloat("transient", "Transient", 0, 1, 0.001f, 0.74f);
+    addFloat("body", "Body", 0, 1, 0.001f, 0.55f);
+    addFloat("stereo", "Stereo", 0, 1, 0.001f, 0.18f);
+    addFloat("movement", "Movement", 0, 1, 0.001f, 0.14f);
+    addFloat("unstable", "Unstable", 0, 1, 0.001f, 0.06f);
+    addFloat("alien", "Alien", 0, 1, 0.001f, 0.02f);
 
-    // Shatter engine.
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "shatter", "Spectral Shatter",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.24f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "fold", "Wave Fold",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.06f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "shift", "Shift",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.0f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "resonance", "Resonator",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.0f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "envFollow", "Envelope",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.28f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "bandLow", "Low Shatter",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.10f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "bandMid", "Mid Shatter",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.52f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "bandHigh", "High Shatter",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.68f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "bandAir", "Air Shatter",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.42f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "character", "Character",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.52f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "preGain", "Pre Gain",
-        FloatRange(-24.0f, 12.0f, 0.01f), 0.0f));
+    addFloat("filterFreq", "Filter Frequency",
+             80.0f, 18000.0f, 1.0f, 14500.0f);
+    addFloat("filterRes", "Filter Resonance",
+             0.05f, 0.95f, 0.001f, 0.30f);
+    addFloat("mix", "Mix", 0, 1, 0.001f, 0.76f);
+    addFloat("output", "Output", -12, 6, 0.01f, -1.5f);
 
-    // Final anti-harsh control.
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "smooth", "Smooth",
-        FloatRange(0.0f, 1.0f, 0.001f), 0.34f));
+    // Spectral / character.
+    addFloat("shatter", "Spectral Shatter", 0, 1, 0.001f, 0.24f);
+    addFloat("fold", "Wave Fold", 0, 1, 0.001f, 0.06f);
+    addFloat("shift", "Shift", 0, 1, 0.001f, 0.0f);
+    addFloat("resonance", "Resonator", 0, 1, 0.001f, 0.0f);
+    addFloat("envFollow", "Envelope", 0, 1, 0.001f, 0.28f);
+    addFloat("bandLow", "Low Shatter", 0, 1, 0.001f, 0.10f);
+    addFloat("bandMid", "Mid Shatter", 0, 1, 0.001f, 0.52f);
+    addFloat("bandHigh", "High Shatter", 0, 1, 0.001f, 0.68f);
+    addFloat("bandAir", "Air Shatter", 0, 1, 0.001f, 0.42f);
+    addFloat("character", "Character", 0, 1, 0.001f, 0.52f);
+    addFloat("preGain", "Pre Gain", -24, 12, 0.01f, 0.0f);
+    addFloat("smooth", "Smooth", 0, 1, 0.001f, 0.34f);
 
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(
-        "mode", "Mode",
-        juce::StringArray {
-            "Clean", "Crunch", "Shakal", "Destroy", "Fried",
-            "Pixel", "Alien", "Melt", "Shatter"
-        }, 2));
+    // Modulation matrix.
+    for (int i = 1; i <= 4; ++i)
+        addFloat(
+            ("mod" + juce::String(i) + "Amount").toRawUTF8(),
+            ("Mod " + juce::String(i) + " Amount").toRawUTF8(),
+            -1.0f, 1.0f, 0.001f, 0.0f);
 
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(
-        "resampleMode", "Resample",
-        juce::StringArray {
-            "Hold", "Linear", "Stair", "Smear", "Random"
-        }, 1));
+    addFloat("morph", "Morph", 0, 1, 0.001f, 0.0f);
 
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(
-        "filterType", "Filter",
-        juce::StringArray {
-            "Low Pass", "Band Pass", "High Pass"
-        }, 0));
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "mode",
+                "Mode",
+                juce::StringArray {
+                    "Clean", "Crunch", "Shakal",
+                    "Destroy", "Fried", "Pixel",
+                    "Alien", "Melt", "Shatter"
+                },
+                2));
 
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(
-        "movementShape", "Movement Shape",
-        juce::StringArray {
-            "Sine", "Triangle", "Sample+Hold", "Stepped"
-        }, 0));
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "resampleMode",
+                "Resample",
+                juce::StringArray {
+                    "Hold", "Linear", "Stair",
+                    "Smear", "Random"
+                },
+                1));
 
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(
-        "quality", "Quality",
-        juce::StringArray { "1x", "2x", "4x" }, 2));
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "filterType",
+                "Filter",
+                juce::StringArray {
+                    "Low Pass", "Band Pass",
+                    "High Pass"
+                },
+                0));
 
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(
-        "syncRate", "Sync",
-        juce::StringArray {
-            "Free", "1/4", "1/8", "1/16", "1/32"
-        }, 0));
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "movementShape",
+                "Movement Shape",
+                juce::StringArray {
+                    "Sine", "Triangle",
+                    "Sample+Hold", "Stepped"
+                },
+                0));
 
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(
-        "glitchGrid", "Glitch Grid",
-        juce::StringArray {
-            "Free", "1/8", "1/16", "1/32"
-        }, 1));
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "quality",
+                "Quality",
+                juce::StringArray {
+                    "1x", "2x", "4x"
+                },
+                2));
 
-    p.push_back(std::make_unique<juce::AudioParameterBool>(
-        "autoMatch", "Auto Match", false));
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "syncRate",
+                "Sync",
+                juce::StringArray {
+                    "Free", "1/4", "1/8",
+                    "1/16", "1/32"
+                },
+                0));
 
-    return { p.begin(), p.end() };
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "glitchGrid",
+                "Glitch Grid",
+                juce::StringArray {
+                    "Free", "1/8",
+                    "1/16", "1/32"
+                },
+                1));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "routing",
+                "Routing",
+                juce::StringArray {
+                    "Standard",
+                    "Damage > Shatter",
+                    "Shatter > Damage",
+                    "Parallel"
+                },
+                0));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "msMode",
+                "M/S",
+                juce::StringArray {
+                    "Stereo", "Mid", "Side", "Split"
+                },
+                0));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "liveScene",
+                "Live Scene",
+                juce::StringArray {
+                    "Normal", "Impact", "Glitch",
+                    "Melt", "Broken", "Chaos"
+                },
+                0));
+
+    const juce::StringArray modSources {
+        "Off", "LFO", "Envelope",
+        "Random", "Step", "Beat"
+    };
+
+    const juce::StringArray modDestinations {
+        "None", "Shakal", "Destroy",
+        "Crush", "Decimate", "Shatter",
+        "Fold", "Shift", "Glitch", "Filter"
+    };
+
+    for (int i = 1; i <= 4; ++i)
+    {
+        p.push_back(
+            std::make_unique<
+                juce::AudioParameterChoice>(
+                    "mod" + juce::String(i) + "Source",
+                    "Mod " + juce::String(i) + " Source",
+                    modSources,
+                    0));
+
+        p.push_back(
+            std::make_unique<
+                juce::AudioParameterChoice>(
+                    "mod" + juce::String(i) + "Dest",
+                    "Mod " + juce::String(i) + " Dest",
+                    modDestinations,
+                    0));
+    }
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterBool>(
+                "autoMatch",
+                "Auto Match",
+                false));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterBool>(
+                "smart",
+                "Smart",
+                false));
+
+    return {
+        p.begin(),
+        p.end()
+    };
 }
 
 void ShakalizerAudioProcessor::prepareToPlay(
@@ -189,19 +307,25 @@ void ShakalizerAudioProcessor::prepareToPlay(
     int samplesPerBlock)
 {
     currentSampleRate =
-        sampleRate > 0.0 ? sampleRate : 44100.0;
+        sampleRate > 0.0
+            ? sampleRate
+            : 44100.0;
 
     maxBlockSize =
-        juce::jmax(1, samplesPerBlock);
+        juce::jmax(
+            1,
+            samplesPerBlock);
 
     oversampler2x.reset();
     oversampler4x.reset();
 
     oversampler2x.initProcessing(
-        static_cast<size_t>(maxBlockSize));
+        static_cast<size_t>(
+            maxBlockSize));
 
     oversampler4x.initProcessing(
-        static_cast<size_t>(maxBlockSize));
+        static_cast<size_t>(
+            maxBlockSize));
 
     dryBuffer.setSize(
         2,
@@ -211,29 +335,31 @@ void ShakalizerAudioProcessor::prepareToPlay(
         true);
 
     juce::dsp::ProcessSpec spec;
-    spec.sampleRate = currentSampleRate;
+    spec.sampleRate =
+        currentSampleRate;
     spec.maximumBlockSize =
-        static_cast<juce::uint32>(maxBlockSize);
+        static_cast<juce::uint32>(
+            maxBlockSize);
     spec.numChannels = 1;
 
-    for (auto& f : postFilter)
+    for (auto& filter : postFilter)
     {
-        f.prepare(spec);
-        f.reset();
-        f.setType(
+        filter.prepare(spec);
+        filter.reset();
+        filter.setType(
             juce::dsp::StateVariableTPTFilterType::lowpass);
-        f.setCutoffFrequency(14500.0f);
-        f.setResonance(0.30f);
+        filter.setCutoffFrequency(14500.0f);
+        filter.setResonance(0.30f);
     }
 
-    for (auto& f : safetyFilter)
+    for (auto& filter : safetyFilter)
     {
-        f.prepare(spec);
-        f.reset();
-        f.setType(
+        filter.prepare(spec);
+        filter.reset();
+        filter.setType(
             juce::dsp::StateVariableTPTFilterType::lowpass);
-        f.setCutoffFrequency(18000.0f);
-        f.setResonance(0.10f);
+        filter.setCutoffFrequency(18000.0f);
+        filter.setResonance(0.08f);
     }
 
     holdRemaining.fill(0);
@@ -263,10 +389,10 @@ void ShakalizerAudioProcessor::prepareToPlay(
 
     unstableValue = 0.0f;
     unstableRemaining = 0;
-
     alienPhase.fill(0.0f);
 
     autoMatchGain = 1.0f;
+    morphPhase = 0.0f;
     meterLevel.store(0.0f);
 }
 
@@ -275,11 +401,11 @@ void ShakalizerAudioProcessor::releaseResources()
     oversampler2x.reset();
     oversampler4x.reset();
 
-    for (auto& f : postFilter)
-        f.reset();
+    for (auto& filter : postFilter)
+        filter.reset();
 
-    for (auto& f : safetyFilter)
-        f.reset();
+    for (auto& filter : safetyFilter)
+        filter.reset();
 }
 
 bool ShakalizerAudioProcessor::isBusesLayoutSupported(
@@ -305,13 +431,16 @@ float ShakalizerAudioProcessor::nextRandom()
     rngState ^= rngState << 5;
 
     return static_cast<float>(rngState)
-         / static_cast<float>(
-             std::numeric_limits<std::uint32_t>::max());
+        / static_cast<float>(
+            std::numeric_limits<std::uint32_t>::max());
 }
 
-float ShakalizerAudioProcessor::tpdfDither(float step) noexcept
+float ShakalizerAudioProcessor::tpdfDither(
+    float step) noexcept
 {
-    return (nextRandom() - nextRandom()) * step;
+    return (nextRandom()
+            - nextRandom())
+           * step;
 }
 
 float ShakalizerAudioProcessor::shapedSample(
@@ -321,20 +450,27 @@ float ShakalizerAudioProcessor::shapedSample(
 {
     const float gain =
         juce::Decibels::decibelsToGain(
-            juce::jmap(drive, 0.0f, 24.0f));
+            juce::jmap(
+                drive,
+                0.0f,
+                24.0f));
 
-    const float pushed = x * gain;
+    const float pushed =
+        x * gain;
 
-    // Keep the main nonlinearity smooth. Hard clipping is only a small
-    // character component, which prevents the high end becoming abrasive.
     const float soft =
         std::tanh(
-            pushed * (0.75f + 1.25f * drive));
+            pushed
+            * (0.72f
+               + 1.22f * drive));
 
     const float threshold =
-        juce::jmap(clip, 1.05f, 0.48f);
+        juce::jmap(
+            clip,
+            1.05f,
+            0.50f);
 
-    const float limited =
+    const float clipped =
         juce::jlimit(
             -threshold,
             threshold,
@@ -342,18 +478,26 @@ float ShakalizerAudioProcessor::shapedSample(
 
     const float hard =
         std::tanh(
-            (limited
-             / juce::jmax(0.001f, threshold))
-            * 1.9f);
+            (clipped
+             / juce::jmax(
+                 0.001f,
+                 threshold))
+            * 1.85f);
 
-    const float shaped =
+    const float blend =
+        clip * clip * 0.55f;
+
+    const float shape =
         juce::jmap(
-            clip * clip * 0.65f,
+            blend,
             soft,
             hard);
 
-    return shaped
-        * juce::jmap(drive, 1.0f, 0.68f);
+    return shape
+        * juce::jmap(
+            drive,
+            1.0f,
+            0.70f);
 }
 
 float ShakalizerAudioProcessor::waveFold(
@@ -364,34 +508,41 @@ float ShakalizerAudioProcessor::waveFold(
         return x;
 
     const float gain =
-        1.0f + amount * 5.0f;
+        1.0f
+        + amount * 4.2f;
 
-    const float v = x * gain;
+    const float v =
+        x * gain;
 
     float folded =
-        std::fmod(v + 2.0f, 4.0f);
+        std::fmod(
+            v + 2.0f,
+            4.0f);
 
     if (folded < 0.0f)
         folded += 4.0f;
 
     folded =
-        std::abs(folded - 2.0f) - 1.0f;
+        std::abs(
+            folded - 2.0f)
+        - 1.0f;
 
     return juce::jmap(
-        amount * 0.72f,
+        amount * 0.68f,
         x,
         folded);
 }
 
-float ShakalizerAudioProcessor::getMovementValue(
+float ShakalizerAudioProcessor::movementValue(
     int shape,
-    float phase) noexcept
+    float phase) const noexcept
 {
     const float cycles =
         phase / (2.0f * pi);
 
     const float wrapped =
-        cycles - std::floor(cycles);
+        cycles
+        - std::floor(cycles);
 
     switch (shape)
     {
@@ -400,7 +551,8 @@ float ShakalizerAudioProcessor::getMovementValue(
             const float t =
                 wrapped < 0.5f
                     ? wrapped * 2.0f
-                    : 2.0f - wrapped * 2.0f;
+                    : 2.0f
+                      - wrapped * 2.0f;
 
             return t * 2.0f - 1.0f;
         }
@@ -409,8 +561,10 @@ float ShakalizerAudioProcessor::getMovementValue(
             return movementHoldValue;
 
         case 3:
-            return std::floor(wrapped * 8.0f)
-                 / 3.5f - 1.0f;
+            return std::floor(
+                       wrapped * 8.0f)
+                   / 3.5f
+                   - 1.0f;
 
         default:
             return std::sin(phase);
@@ -432,11 +586,11 @@ void ShakalizerAudioProcessor::setFilterFromParameters(
         filterType =
             juce::dsp::StateVariableTPTFilterType::highpass;
 
-    for (auto& f : postFilter)
+    for (auto& filter : postFilter)
     {
-        f.setType(filterType);
-        f.setCutoffFrequency(cutoff);
-        f.setResonance(resonance);
+        filter.setType(filterType);
+        filter.setCutoffFrequency(cutoff);
+        filter.setResonance(resonance);
     }
 }
 
@@ -448,15 +602,20 @@ void ShakalizerAudioProcessor::processBlock(
     juce::ignoreUnused(midiMessages);
 
     const int channels =
-        juce::jmin(2, buffer.getNumChannels());
+        juce::jmin(
+            2,
+            buffer.getNumChannels());
 
     const int samples =
         buffer.getNumSamples();
 
-    if (channels == 0 || samples == 0)
+    if (channels <= 0
+        || samples <= 0)
         return;
 
-    for (int ch = 0; ch < channels; ++ch)
+    for (int ch = 0;
+         ch < channels;
+         ++ch)
     {
         dryBuffer.copyFrom(
             ch,
@@ -469,282 +628,296 @@ void ShakalizerAudioProcessor::processBlock(
 
     auto value = [this](const char* id)
     {
-        return apvts.getRawParameterValue(id)->load();
+        if (auto* p =
+                apvts.getRawParameterValue(id))
+            return p->load();
+
+        return 0.0f;
     };
 
-    const float shakal = clamp01(value("shakal"));
-    const float destroy = clamp01(value("destroy"));
-    const float crush = clamp01(value("crush"));
-    const float decimate = clamp01(value("decimate"));
-    const float drive = clamp01(value("drive"));
-    const float clip = clamp01(value("clip"));
-    const float glitch = clamp01(value("glitch"));
-    const float jitter = clamp01(value("jitter"));
+    float shakal = clamp01(value("shakal"));
+    float destroy = clamp01(value("destroy"));
+    float crush = clamp01(value("crush"));
+    float decimate = clamp01(value("decimate"));
+    float drive = clamp01(value("drive"));
+    float clip = clamp01(value("clip"));
+    float glitch = clamp01(value("glitch"));
+    float jitter = clamp01(value("jitter"));
 
-    const float split = clamp01(value("split"));
-    const float transient = clamp01(value("transient"));
-    const float body = clamp01(value("body"));
-    const float stereo = clamp01(value("stereo"));
-    const float movement = clamp01(value("movement"));
-    const float unstable = clamp01(value("unstable"));
-    const float alien = clamp01(value("alien"));
+    const float split =
+        clamp01(value("split"));
+    const float transient =
+        clamp01(value("transient"));
+    const float body =
+        clamp01(value("body"));
+    const float stereo =
+        clamp01(value("stereo"));
+    const float movement =
+        clamp01(value("movement"));
+    const float unstable =
+        clamp01(value("unstable"));
+    const float alien =
+        clamp01(value("alien"));
 
     const float filterFreq =
         value("filterFreq");
-
     const float filterRes =
         clamp01(value("filterRes"));
-
     const float mix =
         clamp01(value("mix"));
-
     const float outputDb =
         value("output");
 
-    const float shatter =
+    float shatter =
         clamp01(value("shatter"));
-
-    const float fold =
+    float fold =
         clamp01(value("fold"));
-
-    const float shift =
+    float shift =
         clamp01(value("shift"));
-
     const float resonance =
         clamp01(value("resonance"));
-
     const float envFollow =
         clamp01(value("envFollow"));
-
     const float bandLow =
         clamp01(value("bandLow"));
-
     const float bandMid =
         clamp01(value("bandMid"));
-
     const float bandHigh =
         clamp01(value("bandHigh"));
-
     const float bandAir =
         clamp01(value("bandAir"));
-
     const float character =
         clamp01(value("character"));
-
     const float preGain =
         juce::jlimit(
             -24.0f,
             12.0f,
             value("preGain"));
-
     const float smooth =
         clamp01(value("smooth"));
 
+    float morph =
+        clamp01(value("morph"));
+
     const bool autoMatch =
         value("autoMatch") > 0.5f;
+    const bool smart =
+        value("smart") > 0.5f;
 
     const int mode =
-        choiceIndex(apvts, "mode", 2);
+        choiceIndex(
+            apvts,
+            "mode",
+            2);
 
     const int resampleMode =
-        choiceIndex(apvts, "resampleMode", 1);
+        choiceIndex(
+            apvts,
+            "resampleMode",
+            1);
 
     const int filterType =
-        choiceIndex(apvts, "filterType", 0);
+        choiceIndex(
+            apvts,
+            "filterType",
+            0);
 
     const int movementShape =
-        choiceIndex(apvts, "movementShape", 0);
+        choiceIndex(
+            apvts,
+            "movementShape",
+            0);
 
     const int quality =
-        choiceIndex(apvts, "quality", 2);
+        choiceIndex(
+            apvts,
+            "quality",
+            2);
 
     const int syncRate =
-        choiceIndex(apvts, "syncRate", 0);
+        choiceIndex(
+            apvts,
+            "syncRate",
+            0);
 
     const int glitchGrid =
-        choiceIndex(apvts, "glitchGrid", 1);
+        choiceIndex(
+            apvts,
+            "glitchGrid",
+            1);
 
-    const float modeScale = [mode]
-    {
-        switch (mode)
+    const int routing =
+        choiceIndex(
+            apvts,
+            "routing",
+            0);
+
+    const int msMode =
+        choiceIndex(
+            apvts,
+            "msMode",
+            0);
+
+    const int liveScene =
+        choiceIndex(
+            apvts,
+            "liveScene",
+            0);
+
+    // Macro mapping.
+    const float modeScale =
+        [mode]
         {
-            case 1: return 0.46f; // Crunch
-            case 2: return 0.78f; // Shakal
-            case 3: return 1.00f; // Destroy
-            case 4: return 1.08f; // Fried
-            case 5: return 0.72f; // Pixel
-            case 6: return 0.68f; // Alien
-            case 7: return 0.90f; // Melt
-            case 8: return 0.98f; // Shatter
-            default: return 0.18f; // Clean
-        }
-    }();
-
-    // True SHAKAL macro: it gently pushes several stages at once instead
-    // of merely multiplying DESTROY.
-    const float macro =
-        shakal * modeScale;
-
-    const float intensity =
-        clamp01(
-            (destroy * (0.55f + 0.55f * macro)
-             + shakal * 0.22f)
-            * juce::jmap(character, 0.75f, 1.08f));
-
-    const float effectiveDrive =
-        clamp01(
-            drive * 0.72f
-            + shakal * 0.28f
-            + intensity * 0.20f);
-
-    const float effectiveClip =
-        clamp01(
-            clip * 0.76f
-            + shakal * 0.20f
-            + character * 0.08f);
-
-    const float effectiveCrush =
-        clamp01(
-            crush * (0.70f + 0.35f * macro)
-            + shakal * 0.08f);
-
-    const float effectiveDecimate =
-        clamp01(
-            decimate * (0.72f + 0.40f * macro)
-            + shakal * 0.06f);
-
-    const float preGainAmount =
-        juce::Decibels::decibelsToGain(preGain);
-
-    const float driveBase =
-        clamp01(
-            effectiveDrive
-            * (0.50f + intensity * 0.72f));
-
-    const float clipBase =
-        clamp01(
-            effectiveClip
-            * (0.35f + intensity * 0.70f));
-
-    const float crushBase =
-        clamp01(
-            effectiveCrush
-            * (0.20f + intensity * 0.88f));
-
-    const float decimateBase =
-        clamp01(
-            effectiveDecimate
-            * (0.08f + intensity * 0.84f));
-
-    auto nonlinearStage =
-        [this, driveBase, clipBase, fold,
-         preGainAmount, mode](juce::dsp::AudioBlock<float>& block)
-    {
-        for (size_t sample = 0;
-             sample < block.getNumSamples();
-             ++sample)
-        {
-            for (int ch = 0;
-                 ch < static_cast<int>(
-                     block.getNumChannels());
-                 ++ch)
+            switch (mode)
             {
-                float* data =
-                    block.getChannelPointer(
-                        static_cast<size_t>(ch));
-
-                float x =
-                    data[sample] * preGainAmount;
-
-                x =
-                    shapedSample(
-                        x,
-                        driveBase,
-                        clipBase);
-
-                const float foldAmount =
-                    fold * (mode == 7 ? 0.90f : 0.58f);
-
-                x =
-                    waveFold(
-                        x,
-                        foldAmount);
-
-                data[sample] =
-                    softCeiling(
-                        x,
-                        0.20f + driveBase * 0.20f);
+                case 1: return 0.45f;
+                case 2: return 0.78f;
+                case 3: return 0.95f;
+                case 4: return 1.06f;
+                case 5: return 0.72f;
+                case 6: return 0.66f;
+                case 7: return 0.90f;
+                case 8: return 0.98f;
+                default: return 0.16f;
             }
+        }();
+
+    float macro =
+        shakal
+        * (0.72f + 0.28f * modeScale);
+
+    macro =
+        juce::jmap(
+            morph,
+            macro,
+            juce::jmin(
+                1.0f,
+                macro + 0.35f));
+
+    float intensity =
+        clamp01(
+            destroy
+            * (0.55f + 0.70f * macro)
+            + shakal * 0.12f);
+
+    if (liveScene == 1)
+        intensity =
+            clamp01(
+                intensity * 1.08f);
+
+    if (liveScene == 2)
+        glitch =
+            clamp01(
+                glitch * 1.80f);
+
+    if (liveScene == 3)
+    {
+        fold =
+            clamp01(fold + 0.16f * morph);
+        shift =
+            clamp01(shift + 0.07f * morph);
+    }
+
+    if (liveScene == 4)
+    {
+        crush =
+            clamp01(
+                crush + 0.12f * macro);
+        decimate =
+            clamp01(
+                decimate + 0.10f * macro);
+    }
+
+    if (liveScene == 5)
+    {
+        intensity =
+            clamp01(
+                intensity * 1.15f);
+        shatter =
+            clamp01(
+                shatter + 0.18f * macro);
+        glitch =
+            clamp01(
+                glitch + 0.14f);
+        fold =
+            clamp01(
+                fold + 0.08f);
+    }
+
+    // Four-slot modulation matrix.
+    float modToShakal = 0.0f;
+    float modToDestroy = 0.0f;
+    float modToCrush = 0.0f;
+    float modToDecimate = 0.0f;
+    float modToShatter = 0.0f;
+    float modToFold = 0.0f;
+    float modToShift = 0.0f;
+    float modToGlitch = 0.0f;
+    float modToFilter = 0.0f;
+
+    const float modAmounts[4] {
+        value("mod1Amount"),
+        value("mod2Amount"),
+        value("mod3Amount"),
+        value("mod4Amount")
+    };
+
+    const int modSources[4] {
+        choiceIndex(apvts, "mod1Source", 0),
+        choiceIndex(apvts, "mod2Source", 0),
+        choiceIndex(apvts, "mod3Source", 0),
+        choiceIndex(apvts, "mod4Source", 0)
+    };
+
+    const int modDests[4] {
+        choiceIndex(apvts, "mod1Dest", 0),
+        choiceIndex(apvts, "mod2Dest", 0),
+        choiceIndex(apvts, "mod3Dest", 0),
+        choiceIndex(apvts, "mod4Dest", 0)
+    };
+
+    auto applyMod =
+        [](int destination,
+           float amount,
+           float& a,
+           float& b,
+           float& c,
+           float& d,
+           float& e,
+           float& f,
+           float& g,
+           float& h,
+           float& i)
+    {
+        const float m =
+            amount * 0.32f;
+
+        switch (destination)
+        {
+            case 1: a += m; break;
+            case 2: b += m; break;
+            case 3: c += m; break;
+            case 4: d += m; break;
+            case 5: e += m; break;
+            case 6: f += m; break;
+            case 7: g += m; break;
+            case 8: h += m; break;
+            case 9: i += m; break;
+            default: break;
         }
     };
 
-    if (quality == 1)
-    {
-        const auto input =
-            juce::dsp::AudioBlock<const float>(buffer);
-
-        auto up =
-            oversampler2x.processSamplesUp(input);
-
-        nonlinearStage(up);
-
-        auto output =
-            juce::dsp::AudioBlock<float>(buffer);
-
-        oversampler2x.processSamplesDown(output);
-    }
-    else if (quality >= 2)
-    {
-        const auto input =
-            juce::dsp::AudioBlock<const float>(buffer);
-
-        auto up =
-            oversampler4x.processSamplesUp(input);
-
-        nonlinearStage(up);
-
-        auto output =
-            juce::dsp::AudioBlock<float>(buffer);
-
-        oversampler4x.processSamplesDown(output);
-    }
-    else
-    {
-        auto block =
-            juce::dsp::AudioBlock<float>(buffer);
-
-        nonlinearStage(block);
-    }
-
-    const int baseBits =
-        juce::jlimit(
-            4,
-            16,
-            static_cast<int>(
-                std::round(
-                    16.0f
-                    - crushBase * 10.0f)));
-
-    const int baseHold =
-        1
-        + static_cast<int>(
-            std::round(
-                decimateBase * 72.0f));
-
     double bpm = 120.0;
 
-    if (syncRate > 0)
+    if (auto* currentPlayHead =
+            getPlayHead())
     {
-        if (auto* currentPlayHead =
-                getPlayHead())
+        if (auto position =
+                currentPlayHead->getPosition())
         {
-            if (auto position =
-                    currentPlayHead->getPosition())
-            {
-                if (auto hostBpm =
-                        position->getBpm())
-                    bpm = *hostBpm;
-            }
+            if (auto hostBpm =
+                    position->getBpm())
+                bpm = *hostBpm;
         }
     }
 
@@ -754,13 +927,14 @@ void ShakalizerAudioProcessor::processBlock(
 
     if (syncRate > 0)
     {
-        const float divisions[] {
+        const float multipliers[] {
             1.0f, 2.0f, 4.0f, 8.0f
         };
 
         movementRateHz =
-            static_cast<float>(bpm / 60.0)
-            * divisions[
+            static_cast<float>(
+                bpm / 60.0)
+            * multipliers[
                 juce::jlimit(
                     0,
                     3,
@@ -769,11 +943,13 @@ void ShakalizerAudioProcessor::processBlock(
 
     const float movementIncrement =
         2.0f * pi * movementRateHz
-        / static_cast<float>(currentSampleRate);
+        / static_cast<float>(
+            currentSampleRate);
 
     const float splitAlpha1 =
         onePoleAlpha(
-            110.0f + split * 140.0f,
+            100.0f
+            + split * 130.0f,
             currentSampleRate);
 
     const float splitAlpha2 =
@@ -786,39 +962,118 @@ void ShakalizerAudioProcessor::processBlock(
             3000.0f,
             currentSampleRate);
 
-    const float filterCutoff =
+    const float baseCutoff =
         juce::jlimit(
             100.0f,
             static_cast<float>(
-                currentSampleRate) * 0.44f,
+                currentSampleRate)
+            * 0.44f,
             filterFreq);
 
     setFilterFromParameters(
         filterType,
-        filterCutoff,
+        baseCutoff,
         juce::jlimit(
             0.05f,
             0.82f,
             filterRes));
 
-    // Smooth is deliberately a real safety control: it reduces high-band
-    // aggression and softens the final edge without killing the character.
     const float safetyCutoff =
         juce::jlimit(
-            4500.0f,
+            4800.0f,
             static_cast<float>(
-                currentSampleRate) * 0.46f,
-            19500.0f
+                currentSampleRate)
+            * 0.46f,
+            19000.0f
             - smooth * 10500.0f);
 
-    for (auto& f : safetyFilter)
+    for (auto& filter : safetyFilter)
     {
-        f.setType(
+        filter.setType(
             juce::dsp::StateVariableTPTFilterType::lowpass);
-        f.setCutoffFrequency(
+        filter.setCutoffFrequency(
             safetyCutoff);
-        f.setResonance(
-            0.08f + smooth * 0.16f);
+        filter.setResonance(
+            0.06f
+            + smooth * 0.15f);
+    }
+
+    auto nonlinearStage =
+        [this, drive, clip, preGain]
+        (juce::dsp::AudioBlock<float>& block)
+    {
+        const float pre =
+            juce::Decibels::decibelsToGain(
+                preGain);
+
+        for (size_t sample = 0;
+             sample < block.getNumSamples();
+             ++sample)
+        {
+            for (size_t ch = 0;
+                 ch < block.getNumChannels();
+                 ++ch)
+            {
+                auto* data =
+                    block.getChannelPointer(ch);
+
+                const float x =
+                    data[sample] * pre;
+
+                data[sample] =
+                    shapedSample(
+                        x,
+                        drive * 0.82f,
+                        clip * 0.70f);
+            }
+        }
+    };
+
+    if (quality == 1)
+    {
+        const auto input =
+            juce::dsp::AudioBlock<const float>(
+                buffer);
+
+        auto up =
+            oversampler2x.processSamplesUp(
+                input);
+
+        nonlinearStage(up);
+
+        auto output =
+            juce::dsp::AudioBlock<float>(
+                buffer);
+
+        oversampler2x.processSamplesDown(
+            output);
+    }
+    else if (quality == 2)
+    {
+        const auto input =
+            juce::dsp::AudioBlock<const float>(
+                buffer);
+
+        auto up =
+            oversampler4x.processSamplesUp(
+                input);
+
+        nonlinearStage(up);
+
+        auto output =
+            juce::dsp::AudioBlock<float>(
+                buffer);
+
+        oversampler4x.processSamplesDown(
+            output);
+    }
+    else
+    {
+        auto block =
+            juce::dsp::AudioBlock<float>(
+                buffer);
+
+        nonlinearStage(block);
     }
 
     float inputEnergy = 0.0f;
@@ -829,14 +1084,16 @@ void ShakalizerAudioProcessor::processBlock(
          sample < samples;
          ++sample)
     {
-        movementPhase += movementIncrement;
+        movementPhase +=
+            movementIncrement;
 
-        if (movementPhase > 2.0f * pi)
+        syncPhase +=
+            movementIncrement;
+
+        if (movementPhase >= 2.0f * pi)
             movementPhase -= 2.0f * pi;
 
-        syncPhase += movementIncrement;
-
-        if (syncPhase > 2.0f * pi)
+        if (syncPhase >= 2.0f * pi)
             syncPhase -= 2.0f * pi;
 
         if (movementShape == 2)
@@ -848,63 +1105,32 @@ void ShakalizerAudioProcessor::processBlock(
                         nextRandom() * 28.0f);
 
                 movementHoldValue =
-                    nextRandom() * 2.0f - 1.0f;
+                    nextRandom()
+                    * 2.0f
+                    - 1.0f;
             }
         }
 
         if (unstable > 0.001f
-            && unstableRemaining <= 0)
+            && --unstableRemaining <= 0)
         {
             unstableRemaining =
-                240 + static_cast<int>(
+                220 + static_cast<int>(
                     nextRandom() * 1100.0f);
 
             unstableValue =
-                nextRandom() * 2.0f - 1.0f;
+                nextRandom()
+                * 2.0f
+                - 1.0f;
         }
 
-        if (unstableRemaining > 0)
-            --unstableRemaining;
+        const float movementBipolar =
+            movementValue(
+                movementShape,
+                movementPhase);
 
-        const float movementValue =
-            movement > 0.001f
-                ? getMovementValue(
-                    movementShape,
-                    movementPhase)
-                : 0.0f;
-
-        const float move =
-            movement * movementValue * 0.26f
-            + unstableValue
-              * unstable * 0.12f;
-
-        int gridSlots = 0;
-
-        if (glitchGrid == 1) gridSlots = 8;
-        if (glitchGrid == 2) gridSlots = 16;
-        if (glitchGrid == 3) gridSlots = 32;
-
-        bool gridBoundary = true;
-
-        if (gridSlots > 0)
-        {
-            const float wrapped =
-                syncPhase / (2.0f * pi)
-                - std::floor(
-                    syncPhase / (2.0f * pi));
-
-            const int slot =
-                static_cast<int>(
-                    wrapped
-                    * static_cast<float>(
-                        gridSlots));
-
-            gridBoundary =
-                slot != lastGlitchGridSlot;
-
-            if (gridBoundary)
-                lastGlitchGridSlot = slot;
-        }
+        const float beatValue =
+            std::sin(syncPhase);
 
         for (int ch = 0;
              ch < channels;
@@ -914,63 +1140,34 @@ void ShakalizerAudioProcessor::processBlock(
                 static_cast<size_t>(ch);
 
             const float dry =
-                dryBuffer.getSample(ch, sample);
+                dryBuffer.getSample(
+                    ch,
+                    sample);
 
-            inputEnergy += dry * dry;
+            inputEnergy +=
+                dry * dry;
 
-            splitLow1[index] =
-                (1.0f - splitAlpha1)
-                    * dry
-                + splitAlpha1
-                    * splitLow1[index];
-
-            splitLow2[index] =
-                (1.0f - splitAlpha2)
-                    * dry
-                + splitAlpha2
-                    * splitLow2[index];
-
-            splitLow3[index] =
-                (1.0f - splitAlpha3)
-                    * dry
-                + splitAlpha3
-                    * splitLow3[index];
-
-            const float low =
-                splitLow1[index];
-
-            const float mid =
-                splitLow2[index] - low;
-
-            const float high =
-                splitLow3[index] - splitLow2[index];
-
-            const float air =
-                dry - splitLow3[index];
-
-            const float inputAbs =
+            const float fastAbs =
                 std::abs(dry);
 
             const float fastCoeff =
-                inputAbs
-                    > fastEnvelope[index]
+                fastAbs > fastEnvelope[index]
                     ? 0.026f
                     : 0.0011f;
 
             const float slowCoeff =
-                inputAbs
-                    > slowEnvelope[index]
+                fastAbs > slowEnvelope[index]
                     ? 0.0055f
                     : 0.00035f;
 
             fastEnvelope[index] +=
                 fastCoeff
-                * (inputAbs
+                * (fastAbs
                    - fastEnvelope[index]);
 
             slowEnvelope[index] +=
                 slowCoeff
-                * (inputAbs
+                * (fastAbs
                    - slowEnvelope[index]);
 
             const float transientAmount =
@@ -984,13 +1181,132 @@ void ShakalizerAudioProcessor::processBlock(
                     slowEnvelope[index]
                     * 3.2f);
 
+            float localShakal = shakal;
+            float localDestroy = destroy;
+            float localCrush = crush;
+            float localDecimate = decimate;
+            float localShatter = shatter;
+            float localFold = fold;
+            float localShift = shift;
+            float localGlitch = glitch;
+            float localFilter = 0.0f;
+
+            for (int slot = 0;
+                 slot < 4;
+                 ++slot)
+            {
+                float source = 0.0f;
+
+                switch (modSources[slot])
+                {
+                    case 1:
+                        source =
+                            bipolarToUnit(
+                                movementBipolar);
+                        break;
+
+                    case 2:
+                        source =
+                            clamp01(
+                                slowEnvelope[index]
+                                * 3.0f);
+                        break;
+
+                    case 3:
+                        source =
+                            bipolarToUnit(
+                                unstableValue);
+                        break;
+
+                    case 4:
+                        source =
+                            bipolarToUnit(
+                                movementHoldValue);
+                        break;
+
+                    case 5:
+                        source =
+                            bipolarToUnit(
+                                beatValue);
+                        break;
+
+                    default:
+                        source = 0.5f;
+                        break;
+                }
+
+                const float signedSource =
+                    source * 2.0f - 1.0f;
+
+                applyMod(
+                    modDests[slot],
+                    signedSource
+                    * modAmounts[slot],
+                    localShakal,
+                    localDestroy,
+                    localCrush,
+                    localDecimate,
+                    localShatter,
+                    localFold,
+                    localShift,
+                    localGlitch,
+                    localFilter);
+            }
+
+            localShakal =
+                clamp01(localShakal);
+
+            localDestroy =
+                clamp01(localDestroy);
+
+            localCrush =
+                clamp01(localCrush);
+
+            localDecimate =
+                clamp01(localDecimate);
+
+            localShatter =
+                clamp01(localShatter);
+
+            localFold =
+                clamp01(localFold);
+
+            localShift =
+                clamp01(localShift);
+
+            localGlitch =
+                clamp01(localGlitch);
+
+            float dynamicIntensity =
+                intensity;
+
+            if (smart)
+            {
+                const float inputShape =
+                    clamp01(
+                        transientAmount * 0.70f
+                        + bodyAmount * 0.30f);
+
+                dynamicIntensity =
+                    clamp01(
+                        dynamicIntensity
+                        * (0.78f
+                           + inputShape * 0.34f));
+
+                localShatter =
+                    clamp01(
+                        localShatter
+                        * (0.80f
+                           + inputShape * 0.28f));
+            }
+
             const float envAmount =
                 juce::jmap(
                     envFollow,
                     1.0f,
                     clamp01(
                         0.35f
-                        + transientAmount * 0.75f
+                        + transientAmount * 0.65f
                         + bodyAmount * 0.30f));
 
             if (holdRemaining[index] <= 0)
@@ -1002,7 +1318,12 @@ void ShakalizerAudioProcessor::processBlock(
                     dry;
 
                 int hold =
-                    baseHold;
+                    1
+                    + static_cast<int>(
+                        std::round(
+                            localDecimate
+                            * dynamicIntensity
+                            * 72.0f));
 
                 if (jitter > 0.001f)
                 {
@@ -1011,12 +1332,12 @@ void ShakalizerAudioProcessor::processBlock(
                             std::round(
                                 hold
                                 * jitter
-                                * 0.50f));
+                                * 0.45f));
 
                     hold +=
                         static_cast<int>(
-                            (nextRandom() * 2.0f
-                             - 1.0f)
+                            (nextRandom()
+                             * 2.0f - 1.0f)
                             * jitterAmount);
                 }
 
@@ -1071,7 +1392,9 @@ void ShakalizerAudioProcessor::processBlock(
                         0.5f
                         + 0.5f
                           * std::sin(
-                              progress * pi * 2.0f
+                              progress
+                              * 2.0f
+                              * pi
                               - pi * 0.5f);
 
                     resampled =
@@ -1084,56 +1407,104 @@ void ShakalizerAudioProcessor::processBlock(
 
                 default:
                     resampled =
-                        nextRandom() < progress
+                        nextRandom()
+                            < progress
                             ? heldSample[index]
                             : previousHeldSample[index];
                     break;
             }
 
-            const float baseShatter =
-                shatter
-                * intensity
-                * envAmount
-                * (0.82f + move * 0.18f);
+            float source =
+                routing == 2
+                    ? dry
+                    : buffer.getSample(
+                        ch,
+                        sample);
 
-            // Low band stays deliberately calmer.
+            if (routing == 3)
+            {
+                source =
+                    0.5f
+                    * (source + dry);
+            }
+
+            splitLow1[index] =
+                (1.0f - splitAlpha1)
+                * source
+                + splitAlpha1
+                * splitLow1[index];
+
+            splitLow2[index] =
+                (1.0f - splitAlpha2)
+                * source
+                + splitAlpha2
+                * splitLow2[index];
+
+            splitLow3[index] =
+                (1.0f - splitAlpha3)
+                * source
+                + splitAlpha3
+                * splitLow3[index];
+
+            const float low =
+                splitLow1[index];
+
+            const float mid =
+                splitLow2[index] - low;
+
+            const float high =
+                splitLow3[index] - splitLow2[index];
+
+            const float air =
+                source - splitLow3[index];
+
+            const float shatterBase =
+                localShatter
+                * dynamicIntensity
+                * envAmount;
+
             const float lowAmt =
                 clamp01(
-                    baseShatter
+                    shatterBase
                     * bandLow
-                    * 0.40f);
+                    * 0.34f);
 
             const float midAmt =
                 clamp01(
-                    baseShatter
+                    shatterBase
                     * bandMid
-                    * 0.78f);
+                    * 0.72f);
 
             const float highAmt =
                 clamp01(
-                    baseShatter
+                    shatterBase
                     * bandHigh
-                    * 0.90f);
+                    * 0.82f);
 
             const float airAmt =
                 clamp01(
-                    baseShatter
+                    shatterBase
                     * bandAir
-                    * (0.48f + 0.34f
-                       * (1.0f - smooth)));
+                    * (0.42f
+                       + 0.32f
+                         * (1.0f
+                            - smooth)));
 
-            auto processBand =
-                [this, crushBase, decimateBase,
-                 fold, character, resampled,
-                 baseBits](float band, float amount)
+            auto destroyBand =
+                [this, localCrush,
+                 localDecimate, localFold,
+                 character, resampled]
+                (float band,
+                 float amount)
             {
                 if (amount <= 0.0001f)
                     return band;
 
                 const float crushAmount =
                     clamp01(
-                        crushBase
-                        * (0.45f + amount * 0.78f));
+                        localCrush
+                        * (0.42f
+                           + amount * 0.78f));
 
                 const int bits =
                     juce::jlimit(
@@ -1143,8 +1514,7 @@ void ShakalizerAudioProcessor::processBlock(
                             std::round(
                                 16.0f
                                 - crushAmount
-                                  * static_cast<float>(
-                                      16 - baseBits))));
+                                  * 10.0f)));
 
                 const float levels =
                     static_cast<float>(
@@ -1152,22 +1522,12 @@ void ShakalizerAudioProcessor::processBlock(
 
                 float x =
                     juce::jmap(
-                        amount * 0.72f,
+                        amount
+                        * (0.64f
+                           + localDecimate
+                             * 0.25f),
                         band,
                         resampled);
-
-                if (decimateBase > 0.001f)
-                {
-                    x =
-                        juce::jmap(
-                            amount
-                            * decimateBase
-                            * 0.55f,
-                            x,
-                            std::round(x
-                                       * levels)
-                            / levels);
-                }
 
                 const float step =
                     2.0f
@@ -1180,61 +1540,75 @@ void ShakalizerAudioProcessor::processBlock(
                         (x
                          + tpdfDither(
                              step
-                             * 0.35f
+                             * 0.25f
                              * crushAmount))
                         * levels)
                     / levels;
 
                 x =
                     juce::jmap(
-                        amount * 0.62f,
+                        amount * 0.58f,
                         x,
                         quantized);
 
                 x =
                     waveFold(
                         x,
-                        fold
+                        localFold
                         * amount
                         * juce::jmap(
                             character,
-                            0.55f,
-                            1.10f));
+                            0.45f,
+                            1.08f));
 
                 return softCeiling(
                     x,
-                    0.10f + amount * 0.18f);
+                    0.08f
+                    + amount * 0.17f);
             };
 
-            float processed =
-                processBand(low, lowAmt)
-                + processBand(mid, midAmt)
-                + processBand(high, highAmt)
-                + processBand(air, airAmt);
+            const float shattered =
+                destroyBand(low, lowAmt)
+                + destroyBand(mid, midAmt)
+                + destroyBand(high, highAmt)
+                + destroyBand(air, airAmt);
 
-            // Protect the lows and keep the sum energy sane.
-            const float lowProtection =
-                1.0f - lowAmt * 0.72f;
+            float wet =
+                juce::jmap(
+                    lowAmt,
+                    source,
+                    shattered);
 
-            processed =
-                processed
-                + low
-                  * (1.0f - lowProtection);
+            if (routing == 3)
+            {
+                const float parallelDry =
+                    juce::jmap(
+                        shatterBase * 0.50f,
+                        source,
+                        shattered);
 
-            const float movementGain =
+                wet =
+                    0.5f
+                    * (wet
+                       + parallelDry);
+            }
+
+            wet *=
                 1.0f
-                + move
-                  * (0.10f
-                     + shatter * 0.16f);
+                + (movement
+                   * movementBipolar
+                   * 0.18f)
+                + unstableValue
+                  * unstable
+                  * 0.08f;
 
-            processed *= movementGain;
-
-            if (shift > 0.001f)
+            if (localShift > 0.001f)
             {
                 const float carrierHz =
                     20.0f
-                    + 1500.0f
-                      * shift * shift;
+                    + 1350.0f
+                      * localShift
+                      * localShift;
 
                 alienPhase[index] +=
                     2.0f * pi
@@ -1242,71 +1616,60 @@ void ShakalizerAudioProcessor::processBlock(
                     / static_cast<float>(
                         currentSampleRate);
 
-                if (alienPhase[index] > 2.0f * pi)
+                if (alienPhase[index]
+                    >= 2.0f * pi)
+                {
                     alienPhase[index] -=
                         2.0f * pi;
+                }
 
                 const float carrier =
                     std::sin(
                         alienPhase[index]);
 
-                const float shifted =
-                    processed
-                    * (0.65f
-                       + 0.35f
-                         * carrier);
-
-                processed =
+                wet =
                     juce::jmap(
-                        shift * 0.48f,
-                        processed,
-                        shifted);
+                        localShift * 0.40f,
+                        wet,
+                        wet
+                        * (0.74f
+                           + 0.26f
+                             * carrier));
             }
 
-            if (mode == 5)
+            if (alien > 0.001f)
             {
-                processed =
-                    juce::jmap(
-                        0.35f,
-                        processed,
-                        std::round(
-                            processed * 31.0f)
-                        / 31.0f);
-            }
-
-            if (mode == 6
-                && alien > 0.001f)
-            {
-                processed +=
-                    processed
+                wet +=
+                    wet
                     * std::sin(
                         alienPhase[index]
-                        * 0.73f)
+                        * 0.61f)
                     * alien
-                    * 0.45f;
+                    * 0.18f;
             }
 
             if (resonance > 0.001f)
             {
+                const int bufferSize =
+                    static_cast<int>(
+                        resonatorBuffer[index]
+                            .size());
+
                 const int delaySamples =
                     juce::jlimit(
                         24,
-                        7600,
+                        bufferSize - 1,
                         static_cast<int>(
-                            (0.009f
+                            (0.010f
                              + resonance
-                               * 0.075f)
+                               * 0.070f)
                             * currentSampleRate));
 
                 int readIndex =
                     resonatorWriteIndex
                     - delaySamples;
 
-                const int bufferSize =
-                    static_cast<int>(
-                        resonatorBuffer[index].size());
-
-                while (readIndex < 0)
+                if (readIndex < 0)
                     readIndex += bufferSize;
 
                 const float delayed =
@@ -1314,29 +1677,65 @@ void ShakalizerAudioProcessor::processBlock(
                         [static_cast<size_t>(
                             readIndex)];
 
-                const float feedback =
-                    0.12f
-                    + resonance * 0.42f;
-
-                processed +=
+                wet +=
                     delayed
                     * resonance
-                    * 0.28f;
+                    * 0.22f;
 
                 resonatorBuffer[index]
                     [static_cast<size_t>(
                         resonatorWriteIndex)] =
-                    processed
-                    + delayed * feedback;
+                    wet
+                    + delayed
+                      * (0.10f
+                         + resonance
+                           * 0.34f);
+            }
+
+            const int gridSlots =
+                glitchGrid == 1
+                    ? 8
+                    : glitchGrid == 2
+                        ? 16
+                        : glitchGrid == 3
+                            ? 32
+                            : 0;
+
+            bool gridBoundary = true;
+
+            if (gridSlots > 0)
+            {
+                const float wrapped =
+                    syncPhase
+                    / (2.0f * pi)
+                    - std::floor(
+                        syncPhase
+                        / (2.0f * pi));
+
+                const int slot =
+                    static_cast<int>(
+                        wrapped
+                        * gridSlots);
+
+                gridBoundary =
+                    slot
+                    != lastGlitchGridSlot;
+
+                if (gridBoundary)
+                    lastGlitchGridSlot =
+                        slot;
             }
 
             const float glitchChance =
-                glitch
-                * (0.012f
-                   + intensity * 0.05f)
+                localGlitch
+                * (0.008f
+                   + dynamicIntensity
+                     * 0.04f)
                 * (gridSlots > 0
-                    ? (gridBoundary ? 0.55f : 0.0f)
-                    : 0.00008f);
+                    ? (gridBoundary
+                        ? 0.42f
+                        : 0.0f)
+                    : 0.00006f);
 
             if (glitchCooldown[index] > 0)
                 --glitchCooldown[index];
@@ -1344,43 +1743,48 @@ void ShakalizerAudioProcessor::processBlock(
             if (glitchChance > 0.0f
                 && glitchRemaining[index] <= 0
                 && glitchCooldown[index] <= 0
-                && nextRandom() < glitchChance)
+                && nextRandom()
+                   < glitchChance)
             {
                 glitchRemaining[index] =
-                    18 + static_cast<int>(
-                        nextRandom() * 220.0f);
+                    14
+                    + static_cast<int>(
+                        nextRandom()
+                        * 220.0f);
 
                 glitchCooldown[index] =
-                    800 + static_cast<int>(
-                        nextRandom() * 5000.0f);
+                    850
+                    + static_cast<int>(
+                        nextRandom()
+                        * 5000.0f);
 
                 glitchValue[index] =
-                    processed;
+                    wet;
             }
 
             if (glitchRemaining[index] > 0)
             {
-                const float glitchMix =
+                const float holdMix =
                     glitchRemaining[index] < 24
                         ? static_cast<float>(
                             glitchRemaining[index])
                           / 24.0f
                         : 1.0f;
 
-                processed =
+                wet =
                     juce::jmap(
-                        glitchMix,
-                        processed,
+                        holdMix,
+                        wet,
                         glitchValue[index]);
 
                 --glitchRemaining[index];
             }
 
             const float cutoffMod =
-                move * 0.22f
-                + unstableValue
-                  * unstable
-                  * 0.08f;
+                localFilter
+                + movementBipolar
+                  * movement
+                  * 0.16f;
 
             const float modCutoff =
                 juce::jlimit(
@@ -1388,7 +1792,7 @@ void ShakalizerAudioProcessor::processBlock(
                     static_cast<float>(
                         currentSampleRate)
                     * 0.44f,
-                    filterCutoff
+                    baseCutoff
                     * std::pow(
                         2.0f,
                         cutoffMod));
@@ -1397,83 +1801,97 @@ void ShakalizerAudioProcessor::processBlock(
                 .setCutoffFrequency(
                     modCutoff);
 
-            float wet =
+            wet =
                 postFilter[index]
                     .processSample(
                         0,
-                        processed);
+                        wet);
 
             const float transientProtection =
                 juce::jmap(
                     transient,
                     0.0f,
                     1.0f,
-                    0.52f,
+                    0.54f,
                     0.16f);
 
-            const float bodyAmountFinal =
+            const float bodyWet =
                 juce::jmap(
                     body,
                     0.0f,
                     1.0f,
                     0.28f,
-                    0.86f);
+                    0.82f);
 
-            const float dynamicAmount =
+            const float dynamicWet =
                 juce::jlimit(
                     0.0f,
                     1.0f,
-                    bodyAmountFinal
+                    bodyWet
                     - transientAmount
                       * transientProtection);
 
-            wet =
+            // Shakal macro controls the wet contribution but never kills
+            // the dry transient completely.
+            float destroyed =
                 juce::jmap(
-                    dynamicAmount
+                    dynamicWet
                     * envAmount,
                     dry,
                     wet);
 
-            if (channels == 2
-                && stereo > 0.001f)
+            if (routing == 1)
             {
-                const float decor =
-                    stereo
-                    * (0.006f
-                       + shatter * 0.012f);
+                const float preDamage =
+                    shapedSample(
+                        dry,
+                        localDestroy
+                        * 0.35f,
+                        localCrush
+                        * 0.40f);
 
-                wet +=
-                    (index == 0
-                        ? -decor
-                        : decor)
-                    * move;
+                destroyed =
+                    juce::jmap(
+                        dynamicIntensity
+                        * 0.65f,
+                        preDamage,
+                        destroyed);
             }
 
-            // Smooth is also a character control: the more it is turned up,
-            // the more of the original transient is retained.
-            const float smoothBlend =
-                juce::jmap(
-                    smooth,
-                    1.0f,
-                    0.72f);
+            if (routing == 2)
+            {
+                const float postDamage =
+                    shapedSample(
+                        destroyed,
+                        localDestroy
+                        * 0.45f,
+                        localCrush
+                        * 0.50f);
 
-            wet =
+                destroyed =
+                    juce::jmap(
+                        dynamicIntensity
+                        * 0.72f,
+                        destroyed,
+                        postDamage);
+            }
+
+            destroyed =
                 juce::jmap(
-                    smooth * 0.22f,
-                    wet,
+                    smooth * 0.26f,
+                    destroyed,
                     dry);
 
-            const float destroyed =
-                juce::jmap(
-                    intensity
-                    * dynamicAmount
-                    * smoothBlend,
-                    dry,
-                    wet);
+            const float wetAmount =
+                clamp01(
+                    dynamicIntensity
+                    * (0.56f
+                       + 0.44f
+                         * localShakal));
 
             const float out =
                 juce::jmap(
-                    mix,
+                    mix * wetAmount,
                     dry,
                     destroyed);
 
@@ -1482,7 +1900,8 @@ void ShakalizerAudioProcessor::processBlock(
                 sample,
                 out);
 
-            processedEnergy += out * out;
+            processedEnergy +=
+                out * out;
 
             blockPeak =
                 juce::jmax(
@@ -1500,12 +1919,73 @@ void ShakalizerAudioProcessor::processBlock(
         }
     }
 
-    // A restrained stereo field; no per-sample random pan noise.
+    // M/S post-stage.
     if (channels == 2
-        && stereo > 0.001f)
+        && msMode != 0)
+    {
+        for (int sample = 0;
+             sample < samples;
+             ++sample)
+        {
+            const float left =
+                buffer.getSample(
+                    0,
+                    sample);
+
+            const float right =
+                buffer.getSample(
+                    1,
+                    sample);
+
+            const float mid =
+                (left + right)
+                * 0.5f;
+
+            const float side =
+                (left - right)
+                * 0.5f;
+
+            float outL = left;
+            float outR = right;
+
+            if (msMode == 1)
+            {
+                outL = mid;
+                outR = mid;
+            }
+            else if (msMode == 2)
+            {
+                outL = side;
+                outR = -side;
+            }
+            else
+            {
+                outL =
+                    mid
+                    + side * (1.0f + stereo * 0.40f);
+
+                outR =
+                    mid
+                    - side * (1.0f + stereo * 0.40f);
+            }
+
+            buffer.setSample(
+                0,
+                sample,
+                outL);
+
+            buffer.setSample(
+                1,
+                sample,
+                outR);
+        }
+    }
+    else if (channels == 2
+             && stereo > 0.001f)
     {
         const float width =
-            1.0f + stereo * 0.38f;
+            1.0f
+            + stereo * 0.34f;
 
         for (int sample = 0;
              sample < samples;
@@ -1522,10 +2002,12 @@ void ShakalizerAudioProcessor::processBlock(
                     sample);
 
             const float mid =
-                (left + right) * 0.5f;
+                (left + right)
+                * 0.5f;
 
             const float side =
-                (left - right) * 0.5f;
+                (left - right)
+                * 0.5f;
 
             buffer.setSample(
                 0,
@@ -1558,19 +2040,19 @@ void ShakalizerAudioProcessor::processBlock(
         const float target =
             juce::jlimit(
                 0.58f,
-                1.65f,
+                1.60f,
                 inputRms
                 / outputRms);
 
         autoMatchGain +=
-            0.045f
+            0.035f
             * (target
                - autoMatchGain);
     }
     else
     {
         autoMatchGain +=
-            0.035f
+            0.025f
             * (1.0f
                - autoMatchGain);
     }
@@ -1580,10 +2062,9 @@ void ShakalizerAudioProcessor::processBlock(
             outputDb)
         * autoMatchGain;
 
-    buffer.applyGain(finalGain);
+    buffer.applyGain(
+        finalGain);
 
-    // Final safety stage: tame sharp peaks and ultrasonic-ish edge without
-    // turning the entire effect into a brickwall limiter.
     for (int ch = 0;
          ch < channels;
          ++ch)
@@ -1600,13 +2081,15 @@ void ShakalizerAudioProcessor::processBlock(
             x =
                 safetyFilter[
                     static_cast<size_t>(ch)]
-                    .processSample(0, x);
+                    .processSample(
+                        0,
+                        x);
 
             x =
                 softCeiling(
                     x,
-                    0.32f
-                    + smooth * 0.55f);
+                    0.26f
+                    + smooth * 0.62f);
 
             x *= 0.96f;
 
@@ -1622,7 +2105,8 @@ void ShakalizerAudioProcessor::processBlock(
             0.0f,
             1.0f,
             juce::jmax(
-                blockPeak * finalGain
+                blockPeak
+                * finalGain
                 * 0.96f,
                 meterLevel.load()
                 * 0.92f)));
@@ -1631,7 +2115,8 @@ void ShakalizerAudioProcessor::processBlock(
 juce::AudioProcessorEditor*
 ShakalizerAudioProcessor::createEditor()
 {
-    return new ShakalizerAudioProcessorEditor(*this);
+    return new ShakalizerAudioProcessorEditor(
+        *this);
 }
 
 void ShakalizerAudioProcessor::getStateInformation(
