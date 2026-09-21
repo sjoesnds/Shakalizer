@@ -126,6 +126,7 @@ private:
     juce::TextButton loadPresetButton { "LOAD" };
 
     juce::Label meterLabel { {}, "OUT" };
+    juce::Label cpuLabel { {}, "CPU 0%" };
     Meter meter;
 
     juce::Slider shakalSlider;
