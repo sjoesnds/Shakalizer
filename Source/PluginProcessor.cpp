@@ -465,6 +465,11 @@ void ShakalizerAudioProcessor::prepareToPlay(
 
     scopeWriteIndex.store(0);
 
+    for (auto& band : bandLevels)
+        band.store(0.0f);
+
+    cpuLoad.store(0.0f);
+
     resonatorBuffer = {};
     resonatorWriteIndex = 0;
 
