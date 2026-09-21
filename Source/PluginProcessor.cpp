@@ -1738,7 +1738,10 @@ void ShakalizerAudioProcessor::processBlock(
                  localDecimate, localFold,
                  character, resampled,
                  spectralMode, index,
-                 movementBipolar]
+                 movementBipolar,
+                 spectralMix, spectralSmear,
+                 spectralFreezeAmount, spectralBits,
+                 spectralRing]
                 (float band,
                  float amount)
             {
