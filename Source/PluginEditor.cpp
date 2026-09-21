@@ -665,7 +665,9 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         "spectralMix", "spectralSmear",
         "spectralFreezeAmount", "spectralBits",
         "spectralRing",
-        "modRate", "modDepth", "modSmooth"
+        "modRate", "modDepth", "modSmooth",
+        "smartAmount", "smartBassProtect",
+        "smartTransientProtect", "smartHighControl"
     }};
 
     for (int i = 0;
@@ -1197,7 +1199,7 @@ void ShakalizerAudioProcessorEditor::resized()
         w - left - 35;
 
     const int cols = 7;
-    const int rows = 7;
+    const int rows = 8;
     const int gap = 4;
 
     const int cellW =
@@ -1544,7 +1546,7 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
     };
 
     const std::array<
-        const char*, 18> glitch {
+        const char*, 22> glitch {
         "glitch", "jitter", "movement",
         "unstable", "stereo", "alien",
         "glitchMode", "glitchLength",
@@ -1552,7 +1554,9 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
         "glitchFade", "glitchVariation",
         "mod1Amount", "mod2Amount",
         "mod3Amount", "mod4Amount",
-        "morph", "mix"
+        "morph", "mix",
+        "smartAmount", "smartBassProtect",
+        "smartTransientProtect", "smartHighControl"
     };
 
     const auto randomizeIds =
@@ -1571,11 +1575,13 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
     };
 
     const std::array<
-        const char*, 9> modulation {
+        const char*, 13> modulation {
         "mod1Amount", "mod2Amount",
         "mod3Amount", "mod4Amount",
         "modRate", "modDepth", "modSmooth",
-        "modWave", "modSync"
+        "modWave", "modSync",
+        "smartAmount", "smartBassProtect",
+        "smartTransientProtect", "smartHighControl"
     };
 
     if (scope == 1)
@@ -1665,6 +1671,10 @@ void ShakalizerAudioProcessorEditor::loadPreset(
             / (20.0f - 0.05f));
         setNormalised(processor, "modDepth", 0.70f);
         setNormalised(processor, "modSmooth", 0.54f);
+        setNormalised(processor, "smartAmount", 0.72f);
+        setNormalised(processor, "smartBassProtect", 0.76f);
+        setNormalised(processor, "smartTransientProtect", 0.72f);
+        setNormalised(processor, "smartHighControl", 0.68f);
         setChoice(processor, "modWave", 0, 4);
         setChoice(processor, "modSync", 0, 5);
 
