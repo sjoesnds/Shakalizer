@@ -112,3 +112,21 @@ The v3 engine adds a realtime 128-sample FFT destruction/resynthesis stage, dete
 - **Stability:** fixed-size DSP buffers remain allocation-free during audio processing and final finite-sample protection stays enabled.
 
 The v3 FFT stage intentionally uses short non-overlapping windows to keep the effect responsive inside a realtime VST3 host.
+
+
+## v4.0 — Destruction Workstation 2.0
+
+The v4 pass expands the workstation with adaptive reactive destruction, delayed nonlinear feedback, pitch-damage modes, deeper granular controls, FFT shaping controls, and routing topology behavior.
+
+### v4 modules
+
+- **FFT 2.0 controls:** window selection, spread, threshold and warp.
+- **Granular 2.0:** density, position, spray, reverse behavior and pan shaping.
+- **Feedback 2.0:** timed feedback, diffusion, freeze, stereo spread and pitch coloration.
+- **Pitch Damage:** micro, semitone, octave and corrupt modes with range/drift controls.
+- **Audio Reactive:** transient, spectral, bass and high-frequency response shaping.
+- **Routing Topology:** serial, parallel, split, crossfade, feedback-loop and wide behaviors.
+- **Macro / Scene:** macro curve and scene morph timing controls.
+- **Editor:** expanded 101-slider bank plus dedicated v4 mode selectors.
+
+v4 keeps fixed-size realtime buffers and avoids dynamic allocation in the audio-processing path.
