@@ -590,7 +590,7 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
 
         if (selected > 0)
         {
-            const index =
+            const int index =
                 juce::jlimit(
                     0,
                     static_cast<int>(
