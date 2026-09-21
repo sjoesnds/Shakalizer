@@ -968,7 +968,12 @@ void ShakalizerAudioProcessor::processBlock(
         {
             if (auto hostBpm =
                     position->getBpm())
-                bpm = *hostBpm;
+            {
+                bpm = juce::jlimit(
+                    30.0,
+                    300.0,
+                    *hostBpm);
+            }
         }
     }
 
