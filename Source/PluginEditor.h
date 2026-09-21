@@ -121,6 +121,7 @@ private:
     juce::TextButton randomCoreButton { "CORE" };
     juce::TextButton randomShatterButton { "SHATTER" };
     juce::TextButton randomGlitchButton { "GLITCH" };
+    juce::TextButton randomModButton { "MOD" };
     juce::TextButton savePresetButton { "SAVE" };
     juce::TextButton loadPresetButton { "LOAD" };
 
