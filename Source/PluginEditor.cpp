@@ -357,77 +357,38 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         },
         2);
 
-    const std::array<
-        std::pair<juce::ComboBox*, juce::StringArray>, 11> comboContent {{
-        { &modeBox,
-          { "Clean", "Crunch", "Shakal", "Destroy",
-            "Fried", "Pixel", "Alien", "Melt", "Shatter" } },
-        { &resampleBox,
-          { "Hold", "Linear", "Stair", "Smear", "Random" } },
-        { &filterBox,
-          { "Low Pass", "Band Pass", "High Pass" } },
-        { &movementBox,
-          { "Sine", "Triangle", "Sample+Hold", "Stepped" } },
-        { &qualityBox,
-          { "1x", "2x", "4x" } },
-        { &syncBox,
-          { "Free", "1/4", "1/8", "1/16", "1/32" } },
-        { &glitchGridBox,
-          { "Free", "1/8", "1/16", "1/32" } },
-        { &routingBox,
-          { "Standard", "Damage > Shatter",
-            "Shatter > Damage", "Parallel" } },
-        { &msModeBox,
-          { "Stereo", "Mid", "Side", "Split" } },
-        { &liveSceneBox,
-          { "Normal", "Impact", "Glitch",
-            "Melt", "Broken", "Chaos" } },
-        { &presetBox,
-          { "CUSTOM", "INIT / SAFE", "VOCAL DIGITAL",
-            "SHAKAL LEAD", "BROKEN 808", "PIXEL DRUM",
-            "GLITCH GRID", "ALIEN", "MELT", "HARD SHATTER" } }
-    }};
+    modeBox.addItemList(
+        { "Clean", "Crunch", "Shakal", "Destroy",
+          "Fried", "Pixel", "Alien", "Melt", "Shatter" }, 1);
+    resampleBox.addItemList(
+        { "Hold", "Linear", "Stair", "Smear", "Random" }, 1);
+    filterBox.addItemList(
+        { "Low Pass", "Band Pass", "High Pass" }, 1);
+    movementBox.addItemList(
+        { "Sine", "Triangle", "Sample+Hold", "Stepped" }, 1);
+    qualityBox.addItemList(
+        { "1x", "2x", "4x" }, 1);
+    syncBox.addItemList(
+        { "Free", "1/4", "1/8", "1/16", "1/32" }, 1);
+    glitchGridBox.addItemList(
+        { "Free", "1/8", "1/16", "1/32" }, 1);
+    routingBox.addItemList(
+        { "Standard", "Damage > Shatter",
+          "Shatter > Damage", "Parallel" }, 1);
+    msModeBox.addItemList(
+        { "Stereo", "Mid", "Side", "Split" }, 1);
+    liveSceneBox.addItemList(
+        { "Normal", "Impact", "Glitch",
+          "Melt", "Broken", "Chaos" }, 1);
 
-    for (auto& [box, items] : comboContent)
+    for (auto* box : {
+        &presetBox, &modeBox, &resampleBox, &filterBox,
+        &movementBox, &qualityBox, &syncBox,
+        &glitchGridBox, &routingBox, &msModeBox,
+        &liveSceneBox })
     {
-        box->clear();
-        box->addItemList(
-            items,
-            1);
         addAndMakeVisible(*box);
     }
-
-    // Preset is deliberately rebuilt above so it can have the same menu
-    // behaviour as the other controls.
-    presetBox.clear();
-    presetBox.addItem("CUSTOM", 1);
-    presetBox.addItemList(
-        {
-            "INIT / SAFE",
-            "VOCAL DIGITAL",
-            "SHAKAL LEAD",
-            "BROKEN 808",
-            "PIXEL DRUM",
-            "GLITCH GRID",
-            "ALIEN",
-            "MELT",
-            "HARD SHATTER"
-        },
-        2);
-
-    const std::array<
-        std::pair<juce::ComboBox*, const char*>, 10> attachmentList {{
-        { &modeBox, "mode" },
-        { &resampleBox, "resampleMode" },
-        { &filterBox, "filterType" },
-        { &movementBox, "movementShape" },
-        { &qualityBox, "quality" },
-        { &syncBox, "syncRate" },
-        { &glitchGridBox, "glitchGrid" },
-        { &routingBox, "routing" },
-        { &msModeBox, "msMode" },
-        { &liveSceneBox, "liveScene" }
-    }};
 
     modeAttachment =
         std::make_unique<
