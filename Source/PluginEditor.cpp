@@ -1282,8 +1282,7 @@ void ShakalizerAudioProcessorEditor::savePresetToFile()
                 .createXml())
     {
         file.replaceWithText(
-            xml->toString(
-                juce::XmlElement::TextFormat().withoutHeader()));
+            xml->toString());
     }
 }
 
@@ -1463,7 +1462,7 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
     };
 
     const std::array<
-        const char*, 12> spectral {
+        const char*, 13> spectral {
         "shatter", "fold", "shift",
         "resonance", "envFollow",
         "bandLow", "bandMid", "bandHigh",
@@ -1472,7 +1471,7 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
     };
 
     const std::array<
-        const char*, 12> glitch {
+        const char*, 14> glitch {
         "glitch", "jitter", "movement",
         "unstable", "stereo", "alien",
         "glitchMode", "glitchLength",
