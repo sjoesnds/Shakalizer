@@ -157,6 +157,47 @@ ShakalizerAudioProcessor::createParameterLayout()
     addFloat("smartTransientProtect", "Smart Transient Protect", 0, 1, 0.001f, 0.72f);
     addFloat("smartHighControl", "Smart High Control", 0, 1, 0.001f, 0.68f);
 
+    // v3 destruction workstation.
+    addFloat("fftMix", "FFT Mix", 0, 1, 0.001f, 0.0f);
+    addFloat("fftShatter", "FFT Shatter", 0, 1, 0.001f, 0.0f);
+    addFloat("fftFreeze", "FFT Freeze", 0, 1, 0.001f, 0.0f);
+    addFloat("fftBits", "FFT Bits", 0, 1, 0.001f, 0.0f);
+    addFloat("fftShift", "FFT Shift", -1, 1, 0.001f, 0.0f);
+    addFloat("grainMix", "Grain Mix", 0, 1, 0.001f, 0.0f);
+    addFloat("grainSize", "Grain Size", 0, 1, 0.001f, 0.28f);
+    addFloat("grainPitch", "Grain Pitch", 0, 1, 0.001f, 0.50f);
+    addFloat("grainJitter", "Grain Jitter", 0, 1, 0.001f, 0.10f);
+    addFloat("feedback", "Feedback", 0, 1, 0.001f, 0.0f);
+    addFloat("feedbackTone", "Feedback Tone", 0, 1, 0.001f, 0.48f);
+    addFloat("feedbackDrive", "Feedback Drive", 0, 1, 0.001f, 0.16f);
+    addFloat("pitchChaos", "Pitch Chaos", 0, 1, 0.001f, 0.0f);
+    addFloat("timelineMix", "Timeline Mix", 0, 1, 0.001f, 0.0f);
+
+    for (int i = 1; i <= 8; ++i)
+        addFloat(
+            ("timelineStep" + juce::String(i)).toRawUTF8(),
+            ("Timeline " + juce::String(i)).toRawUTF8(),
+            0.0f, 1.0f, 0.001f,
+            i == 1 || i == 5 ? 0.85f : 0.0f);
+
+    for (int i = 5; i <= 8; ++i)
+        addFloat(
+            ("mod" + juce::String(i) + "Amount").toRawUTF8(),
+            ("Mod " + juce::String(i) + " Amount").toRawUTF8(),
+            -1.0f, 1.0f, 0.001f, 0.0f);
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "characterMode",
+                "Character Mode",
+                juce::StringArray {
+                    "Neutral", "Digital", "VHS", "Console",
+                    "Radio", "Metallic", "Broken", "Alien",
+                    "Cheap DAC", "Corrupt"
+                },
+                0));
+
     p.push_back(
         std::make_unique<
             juce::AudioParameterChoice>(
@@ -335,7 +376,7 @@ ShakalizerAudioProcessor::createParameterLayout()
         "Fold", "Shift", "Glitch", "Filter"
     };
 
-    for (int i = 1; i <= 4; ++i)
+    for (int i = 1; i <= 8; ++i)
     {
         p.push_back(
             std::make_unique<
@@ -406,6 +447,13 @@ void ShakalizerAudioProcessor::prepareToPlay(
         false,
         true);
 
+    fftWetBuffer.setSize(
+        2,
+        maxBlockSize,
+        false,
+        false,
+        true);
+
     juce::dsp::ProcessSpec spec;
     spec.sampleRate =
         currentSampleRate;
@@ -468,10 +516,24 @@ void ShakalizerAudioProcessor::prepareToPlay(
     for (auto& band : bandLevels)
         band.store(0.0f);
 
+    for (auto& bin : spectrumBuffer)
+        bin.store(0.0f);
+
+    glitchActivity.store(0.0f);
+    modulationActivity.store(0.0f);
     cpuLoad.store(0.0f);
 
     resonatorBuffer = {};
     resonatorWriteIndex = 0;
+    grainBuffer = {};
+    grainPhase.fill(0.0f);
+    grainWriteIndex = 0;
+    feedbackState.fill(0.0f);
+    feedbackToneState.fill(0.0f);
+    feedbackWriteIndex = 0;
+    fftFrozenMagnitude = {};
+    fftData.fill(0.0f);
+    fftSource.fill(0.0f);
 
     movementPhase = 0.0f;
     syncPhase = 0.0f;
@@ -498,6 +560,10 @@ void ShakalizerAudioProcessor::releaseResources()
 
     for (auto& filter : safetyFilter)
         filter.reset();
+
+    grainBuffer = {};
+    feedbackState.fill(0.0f);
+    feedbackToneState.fill(0.0f);
 }
 
 bool ShakalizerAudioProcessor::isBusesLayoutSupported(
@@ -819,6 +885,33 @@ void ShakalizerAudioProcessor::processBlock(
     const float smartHighControl =
         clamp01(value("smartHighControl"));
 
+    const float fftMix = clamp01(value("fftMix"));
+    const float fftShatter = clamp01(value("fftShatter"));
+    const float fftFreeze = clamp01(value("fftFreeze"));
+    const float fftBits = clamp01(value("fftBits"));
+    const float fftShift = juce::jlimit(-1.0f, 1.0f, value("fftShift"));
+    const float grainMix = clamp01(value("grainMix"));
+    const float grainSize = clamp01(value("grainSize"));
+    const float grainPitch = clamp01(value("grainPitch"));
+    const float grainJitter = clamp01(value("grainJitter"));
+    const float feedback = clamp01(value("feedback"));
+    const float feedbackTone = clamp01(value("feedbackTone"));
+    const float feedbackDrive = clamp01(value("feedbackDrive"));
+    const float pitchChaos = clamp01(value("pitchChaos"));
+    const float timelineMix = clamp01(value("timelineMix"));
+    const float timelineSteps[8] {
+        clamp01(value("timelineStep1")), clamp01(value("timelineStep2")),
+        clamp01(value("timelineStep3")), clamp01(value("timelineStep4")),
+        clamp01(value("timelineStep5")), clamp01(value("timelineStep6")),
+        clamp01(value("timelineStep7")), clamp01(value("timelineStep8"))
+    };
+
+    const int characterMode =
+        choiceIndex(
+            apvts,
+            "characterMode",
+            0);
+
     const int modWave =
         choiceIndex(
             apvts,
@@ -995,25 +1088,25 @@ void ShakalizerAudioProcessor::processBlock(
     }
 
     // Four-slot modulation matrix.
-    const float modAmounts[4] {
-        value("mod1Amount"),
-        value("mod2Amount"),
-        value("mod3Amount"),
-        value("mod4Amount")
+    const float modAmounts[8] {
+        value("mod1Amount"), value("mod2Amount"),
+        value("mod3Amount"), value("mod4Amount"),
+        value("mod5Amount"), value("mod6Amount"),
+        value("mod7Amount"), value("mod8Amount")
     };
 
-    const int modSources[4] {
-        choiceIndex(apvts, "mod1Source", 0),
-        choiceIndex(apvts, "mod2Source", 0),
-        choiceIndex(apvts, "mod3Source", 0),
-        choiceIndex(apvts, "mod4Source", 0)
+    const int modSources[8] {
+        choiceIndex(apvts, "mod1Source", 0), choiceIndex(apvts, "mod2Source", 0),
+        choiceIndex(apvts, "mod3Source", 0), choiceIndex(apvts, "mod4Source", 0),
+        choiceIndex(apvts, "mod5Source", 0), choiceIndex(apvts, "mod6Source", 0),
+        choiceIndex(apvts, "mod7Source", 0), choiceIndex(apvts, "mod8Source", 0)
     };
 
-    const int modDests[4] {
-        choiceIndex(apvts, "mod1Dest", 0),
-        choiceIndex(apvts, "mod2Dest", 0),
-        choiceIndex(apvts, "mod3Dest", 0),
-        choiceIndex(apvts, "mod4Dest", 0)
+    const int modDests[8] {
+        choiceIndex(apvts, "mod1Dest", 0), choiceIndex(apvts, "mod2Dest", 0),
+        choiceIndex(apvts, "mod3Dest", 0), choiceIndex(apvts, "mod4Dest", 0),
+        choiceIndex(apvts, "mod5Dest", 0), choiceIndex(apvts, "mod6Dest", 0),
+        choiceIndex(apvts, "mod7Dest", 0), choiceIndex(apvts, "mod8Dest", 0)
     };
 
     auto applyMod =
@@ -1265,6 +1358,242 @@ void ShakalizerAudioProcessor::processBlock(
         nonlinearStage(block);
     }
 
+    // v3 TRUE SPECTRAL ENGINE: responsive 128-sample FFT windows.
+    if (fftMix > 0.0001f && fftShatter > 0.0001f)
+    {
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            for (int start = 0; start < samples; start += fftSize)
+            {
+                fftData.fill(0.0f);
+
+                for (int i = 0; i < fftSize; ++i)
+                {
+                    const int pos = start + i;
+                    const float input =
+                        pos < samples
+                            ? buffer.getSample(ch, pos)
+                            : 0.0f;
+
+                    const float phase =
+                        static_cast<float>(i)
+                        / static_cast<float>(fftSize - 1);
+
+                    const float window =
+                        0.5f
+                        - 0.5f * std::cos(2.0f * pi * phase);
+
+                    fftData[static_cast<size_t>(i)] =
+                        input * window;
+                }
+
+                fft.performRealOnlyForwardTransform(
+                    fftData.data());
+
+                fftSource = fftData;
+
+                const int shiftBins =
+                    static_cast<int>(std::round(fftShift * 10.0f));
+
+                for (int bin = 0; bin <= fftSize / 2; ++bin)
+                {
+                    const int sourceBin =
+                        juce::jlimit(
+                            0,
+                            fftSize / 2,
+                            bin - shiftBins);
+
+                    float re = 0.0f;
+                    float im = 0.0f;
+
+                    if (sourceBin == 0)
+                    {
+                        re = fftSource[0];
+                    }
+                    else if (sourceBin == fftSize / 2)
+                    {
+                        re = fftSource[1];
+                    }
+                    else
+                    {
+                        re = fftSource[static_cast<size_t>(2 * sourceBin)];
+                        im = fftSource[static_cast<size_t>(2 * sourceBin + 1)];
+                    }
+
+                    float magnitude =
+                        std::sqrt(re * re + im * im);
+
+                    float frozen =
+                        fftFrozenMagnitude[
+                            static_cast<size_t>(ch)][
+                                static_cast<size_t>(bin)];
+
+                    if (frozen < 1.0e-8f)
+                        frozen = magnitude;
+
+                    frozen +=
+                        (0.008f + (1.0f - fftFreeze) * 0.10f)
+                        * (magnitude - frozen);
+
+                    fftFrozenMagnitude[
+                        static_cast<size_t>(ch)][
+                            static_cast<size_t>(bin)] = frozen;
+
+                    magnitude =
+                        juce::jmap(
+                            fftFreeze,
+                            magnitude,
+                            frozen);
+
+                    if (fftBits > 0.0001f
+                        && magnitude > 1.0e-8f)
+                    {
+                        const float levels =
+                            std::pow(
+                                2.0f,
+                                4.0f + (1.0f - fftBits) * 8.0f);
+
+                        magnitude =
+                            std::round(magnitude * levels)
+                            / levels;
+                    }
+
+                    if (bin > 0 && bin < fftSize / 2)
+                    {
+                        float prevMag = magnitude;
+                        float nextMag = magnitude;
+
+                        const int prevBin = juce::jmax(0, sourceBin - 1);
+                        const int nextBin =
+                            juce::jmin(fftSize / 2, sourceBin + 1);
+
+                        auto packedMagnitude =
+                            [](const std::array<float, 256>& data, int k)
+                        {
+                            if (k == 0)
+                                return std::abs(data[0]);
+                            if (k == 64)
+                                return std::abs(data[1]);
+
+                            const float re =
+                                data[static_cast<size_t>(2 * k)];
+                            const float im =
+                                data[static_cast<size_t>(2 * k + 1)];
+                            return std::sqrt(re * re + im * im);
+                        };
+
+                        prevMag =
+                            packedMagnitude(
+                                fftSource,
+                                prevBin);
+
+                        nextMag =
+                            packedMagnitude(
+                                fftSource,
+                                nextBin);
+
+                        const float spread =
+                            0.5f * (prevMag + nextMag);
+
+                        magnitude =
+                            juce::jmap(
+                                fftShatter * 0.45f,
+                                magnitude,
+                                spread);
+                    }
+
+                    const float phase =
+                        std::atan2(im, re)
+                        + std::sin(
+                            static_cast<float>(bin) * 1.731f
+                            + morphPhase * 2.1f
+                            + movementPhase * 0.31f)
+                          * fftShatter * 1.35f;
+
+                    magnitude *=
+                        0.80f
+                        + std::abs(
+                            std::sin(
+                                static_cast<float>(bin) * 1.731f
+                                + movementPhase))
+                          * fftShatter * 0.58f;
+
+                    re = magnitude * std::cos(phase);
+                    im = magnitude * std::sin(phase);
+
+                    if (bin == 0)
+                        fftData[0] = re;
+                    else if (bin == fftSize / 2)
+                        fftData[1] = re;
+                    else
+                    {
+                        fftData[static_cast<size_t>(2 * bin)] = re;
+                        fftData[static_cast<size_t>(2 * bin + 1)] = im;
+                    }
+
+                    if (ch == 0)
+                    {
+                        const float meter =
+                            juce::jlimit(
+                                0.0f,
+                                1.0f,
+                                std::log1p(magnitude * 10.0f)
+                                / std::log(11.0f));
+
+                        spectrumBuffer[
+                            static_cast<size_t>(
+                                juce::jmin(63, bin))]
+                            .store(
+                                0.78f
+                                * spectrumBuffer[
+                                    static_cast<size_t>(
+                                        juce::jmin(63, bin))].load()
+                                + 0.22f * meter);
+                    }
+                }
+
+                fft.performRealOnlyInverseTransform(
+                    fftData.data());
+
+                const float spectralAmount =
+                    juce::jlimit(
+                        0.0f,
+                        1.0f,
+                        fftMix * fftShatter);
+
+                for (int i = 0; i < fftSize; ++i)
+                {
+                    const int pos = start + i;
+                    if (pos >= samples)
+                        break;
+
+                    const float spectral =
+                        fftData[static_cast<size_t>(i)] * 2.0f;
+
+                    const float original =
+                        buffer.getSample(ch, pos);
+
+                    fftWetBuffer.setSample(
+                        ch,
+                        pos,
+                        juce::jmap(
+                            spectralAmount,
+                            original,
+                            spectral));
+                }
+            }
+        }
+    }
+    else
+    {
+        for (int ch = 0; ch < channels; ++ch)
+            for (int sample = 0; sample < samples; ++sample)
+                fftWetBuffer.setSample(
+                    ch,
+                    sample,
+                    buffer.getSample(ch, sample));
+    }
+
     float inputEnergy = 0.0f;
     float processedEnergy = 0.0f;
     float blockPeak = 0.0f;
@@ -1403,7 +1732,7 @@ void ShakalizerAudioProcessor::processBlock(
             float localFilter = 0.0f;
 
             for (int slot = 0;
-                 slot < 4;
+                 slot < 8;
                  ++slot)
             {
                 float source = 0.0f;
@@ -2015,11 +2344,22 @@ void ShakalizerAudioProcessor::processBlock(
                     * (0.50f
                        + 0.50f * shatterBase));
 
+            const float fftSample =
+                fftWetBuffer.getSample(
+                    ch,
+                    sample);
+
             float wet =
                 juce::jmap(
                     spectralBlend,
                     source,
                     shattered);
+
+            wet =
+                juce::jmap(
+                    fftMix * fftShatter,
+                    wet,
+                    fftSample);
 
             if (routing == 3)
             {
@@ -2043,6 +2383,194 @@ void ShakalizerAudioProcessor::processBlock(
                 + unstableValue
                   * unstable
                   * 0.08f;
+
+            // v3 character fingerprints.
+            switch (characterMode)
+            {
+                case 1:
+                {
+                    const float levels =
+                        std::pow(2.0f, 17.0f - character * 8.0f);
+
+                    wet =
+                        std::round(wet * levels)
+                        / juce::jmax(1.0f, levels);
+                    break;
+                }
+
+                case 2:
+                    wet =
+                        juce::jmap(
+                            character * 0.28f,
+                            wet,
+                            previousHeldSample[index]);
+                    break;
+
+                case 3:
+                    wet =
+                        shapedSample(
+                            wet,
+                            character * 9.0f,
+                            character * 0.48f);
+                    break;
+
+                case 4:
+                    wet =
+                        0.5f
+                        * (wet
+                           + air
+                             * (0.35f + character * 0.45f));
+                    break;
+
+                case 5:
+                    wet +=
+                        wet
+                        * std::sin(
+                            alienPhase[index] * 1.7f
+                            + movementPhase * 2.3f)
+                        * character
+                        * 0.26f;
+                    break;
+
+                case 6:
+                {
+                    const float levels =
+                        7.0f + character * 9.0f;
+
+                    wet =
+                        std::round(wet * levels)
+                        / levels;
+                    break;
+                }
+
+                case 7:
+                    wet *=
+                        0.72f
+                        + 0.28f
+                          * std::sin(
+                              alienPhase[index] * 0.37f);
+                    break;
+
+                case 8:
+                    wet +=
+                        tpdfDither(
+                            0.0035f
+                            + character * 0.012f);
+                    break;
+
+                case 9:
+                    wet *=
+                        0.58f
+                        + 0.42f
+                          * std::sin(
+                              (wet * 4.0f
+                               + movementBipolar)
+                              * (1.0f + character * 5.0f));
+                    break;
+
+                default:
+                    break;
+            }
+
+            if (feedback > 0.0001f)
+            {
+                const float toneCutoff =
+                    350.0f + feedbackTone * 10500.0f;
+
+                const float toneAlpha =
+                    onePoleAlpha(
+                        toneCutoff,
+                        currentSampleRate);
+
+                feedbackToneState[index] +=
+                    (1.0f - toneAlpha)
+                    * (feedbackState[index]
+                       - feedbackToneState[index]);
+
+                const float feedbackSample =
+                    shapedSample(
+                        feedbackToneState[index],
+                        feedbackDrive * 14.0f,
+                        feedbackDrive * 0.72f);
+
+                wet +=
+                    feedbackSample
+                    * feedback
+                    * (0.22f + 0.55f * shakal);
+
+                feedbackState[index] = wet;
+            }
+
+            if (grainMix > 0.0001f)
+            {
+                const int history =
+                    juce::jlimit(
+                        32,
+                        12000,
+                        static_cast<int>(
+                            std::round(
+                                (0.006f
+                                 + grainSize * 0.095f)
+                                * currentSampleRate)));
+
+                const float pitchFactor =
+                    juce::jmap(
+                        grainPitch,
+                        0.50f,
+                        2.00f)
+                    * (1.0f
+                       + (nextRandom() * 2.0f - 1.0f)
+                         * pitchChaos * 0.18f);
+
+                grainPhase[index] +=
+                    pitchFactor
+                    / static_cast<float>(history);
+
+                if (grainPhase[index] >= 1.0f)
+                    grainPhase[index] -= 1.0f;
+
+                const float window =
+                    0.5f
+                    - 0.5f
+                      * std::cos(
+                          2.0f * pi
+                          * grainPhase[index]);
+
+                float read =
+                    static_cast<float>(grainWriteIndex)
+                    - static_cast<float>(history)
+                      * (0.15f + 0.70f * window);
+
+                read +=
+                    (nextRandom() * 2.0f - 1.0f)
+                    * grainJitter
+                    * history * 0.32f;
+
+                while (read < 0.0f)
+                    read += 16384.0f;
+                while (read >= 16384.0f)
+                    read -= 16384.0f;
+
+                const int r0 =
+                    static_cast<int>(read) & 16383;
+                const int r1 =
+                    (r0 + 1) & 16383;
+                const float frac =
+                    read - std::floor(read);
+
+                const float grain =
+                    juce::jmap(
+                        frac,
+                        grainBuffer[index][static_cast<size_t>(r0)],
+                        grainBuffer[index][static_cast<size_t>(r1)]);
+
+                wet =
+                    juce::jmap(
+                        grainMix
+                        * (0.34f + 0.56f * window),
+                        wet,
+                        grain);
+            }
 
             if (localShift > 0.001f)
             {
@@ -2182,6 +2710,22 @@ void ShakalizerAudioProcessor::processBlock(
                             * lengthBeats
                             * currentSampleRate)));
 
+            int timelineSlot =
+                static_cast<int>(
+                    std::floor(
+                        (syncPhase / (2.0f * pi)
+                         - std::floor(syncPhase / (2.0f * pi)))
+                        * 8.0f));
+
+            timelineSlot =
+                juce::jlimit(0, 7, timelineSlot);
+
+            const float timelineLevel =
+                juce::jmap(
+                    timelineMix,
+                    1.0f,
+                    timelineSteps[timelineSlot]);
+
             const float triggerChance =
                 gridSlots > 0
                     ? localGlitch
@@ -2190,6 +2734,7 @@ void ShakalizerAudioProcessor::processBlock(
                       * (0.025f
                          + dynamicIntensity * 0.12f)
                       * (gridBoundary ? 1.0f : 0.0f)
+                      * timelineLevel
                     : localGlitch
                       * 0.0000024f
                       * (1.0f
@@ -2265,7 +2810,8 @@ void ShakalizerAudioProcessor::processBlock(
                         1.0f,
                         0.30f
                         + glitchFade * 0.70f)
-                    * fadeCurve;
+                    * fadeCurve
+                    * timelineLevel;
 
                 switch (glitchMode)
                 {
@@ -2515,6 +3061,9 @@ void ShakalizerAudioProcessor::processBlock(
                     dry,
                     destroyed);
 
+            grainBuffer[index][
+                static_cast<size_t>(grainWriteIndex)] = out;
+
             buffer.setSample(
                 ch,
                 sample,
@@ -2539,9 +3088,13 @@ void ShakalizerAudioProcessor::processBlock(
         }
 
         ++glitchWriteIndex;
+        ++grainWriteIndex;
 
         if (glitchWriteIndex >= 16384)
             glitchWriteIndex = 0;
+
+        if (grainWriteIndex >= 16384)
+            grainWriteIndex = 0;
     }
 
     // M/S post-stage.
@@ -2770,6 +3323,32 @@ void ShakalizerAudioProcessor::processBlock(
             0.20f * bandPeak[band]
             + 0.80f * previous);
     }
+
+    float glitchActivityValue = 0.0f;
+
+    if (glitch > 0.0001f)
+        for (int ch = 0; ch < channels; ++ch)
+            if (glitchRemaining[static_cast<size_t>(ch)] > 0)
+                glitchActivityValue = 1.0f;
+
+    float modulationActivityValue = 0.0f;
+    for (const auto state : modSmoothState)
+        modulationActivityValue =
+            juce::jmax(
+                modulationActivityValue,
+                std::abs(state));
+
+    glitchActivity.store(
+        0.15f * glitchActivityValue
+        + 0.85f * glitchActivity.load());
+
+    modulationActivity.store(
+        0.12f
+        * juce::jlimit(
+            0.0f,
+            1.0f,
+            modulationActivityValue)
+        + 0.88f * modulationActivity.load());
 
     const double blockElapsedMs =
         juce::Time::getMillisecondCounterHiRes()
