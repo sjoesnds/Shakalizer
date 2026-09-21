@@ -585,7 +585,7 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
 
     favoritePresetButton.onClick = [this]
     {
-        const selected =
+        const int selected =
             presetBox.getSelectedItemIndex();
 
         if (selected > 0)
