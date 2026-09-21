@@ -383,6 +383,10 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         { "1/64", "1/32", "1/16", "1/8", "1/4", "1/2" }, 1);
     spectralModeBox.addItemList(
         { "Smooth", "Shatter", "Blur", "Freeze", "Bits", "Ring" }, 1);
+    modWaveBox.addItemList(
+        { "Sine", "Triangle", "Sample+Hold", "Stepped" }, 1);
+    modSyncBox.addItemList(
+        { "Free", "1/4", "1/8", "1/16", "1/32" }, 1);
     routingBox.addItemList(
         { "Standard", "Damage > Shatter",
           "Shatter > Damage", "Parallel" }, 1);
@@ -396,7 +400,8 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         &presetBox, &modeBox, &resampleBox, &filterBox,
         &movementBox, &qualityBox, &syncBox,
         &glitchGridBox, &glitchModeBox, &glitchLengthBox,
-        &spectralModeBox, &routingBox, &msModeBox,
+        &spectralModeBox, &modWaveBox, &modSyncBox,
+        &routingBox, &msModeBox,
         &liveSceneBox })
     {
         addAndMakeVisible(*box);
@@ -451,6 +456,16 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         std::make_unique<
             juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
                 processor.getAPVTS(), "spectralMode", spectralModeBox);
+
+    modWaveAttachment =
+        std::make_unique<
+            juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+                processor.getAPVTS(), "modWave", modWaveBox);
+
+    modSyncAttachment =
+        std::make_unique<
+            juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+                processor.getAPVTS(), "modSync", modSyncBox);
 
     routingAttachment =
         std::make_unique<
@@ -1074,6 +1089,18 @@ void ShakalizerAudioProcessorEditor::resized()
         108,
         26);
 
+    modWaveBox.setBounds(
+        1228,
+        56,
+        92,
+        26);
+
+    modSyncBox.setBounds(
+        1326,
+        56,
+        88,
+        26);
+
     saveAButton.setBounds(
         312,
         56,
@@ -1616,6 +1643,8 @@ void ShakalizerAudioProcessorEditor::loadPreset(
             / (20.0f - 0.05f));
         setNormalised(processor, "modDepth", 0.70f);
         setNormalised(processor, "modSmooth", 0.54f);
+        setChoice(processor, "modWave", 0, 4);
+        setChoice(processor, "modSync", 0, 5);
 
         setChoice(
             processor, "mode", 2, 9);
