@@ -186,6 +186,67 @@ ShakalizerAudioProcessor::createParameterLayout()
             ("Mod " + juce::String(i) + " Amount").toRawUTF8(),
             -1.0f, 1.0f, 0.001f, 0.0f);
 
+    // v4 adaptive, granular, feedback and routing controls.
+    addFloat("fftSpread", "FFT Spread", 0, 1, 0.001f, 0.18f);
+    addFloat("fftThreshold", "FFT Threshold", 0, 1, 0.001f, 0.0f);
+    addFloat("fftWarp", "FFT Warp", -1, 1, 0.001f, 0.0f);
+
+    addFloat("grainDensity", "Grain Density", 0, 1, 0.001f, 0.18f);
+    addFloat("grainPosition", "Grain Position", 0, 1, 0.001f, 0.50f);
+    addFloat("grainSpray", "Grain Spray", 0, 1, 0.001f, 0.08f);
+    addFloat("grainReverse", "Grain Reverse", 0, 1, 0.001f, 0.0f);
+    addFloat("grainPan", "Grain Pan", 0, 1, 0.001f, 0.50f);
+
+    addFloat("feedbackTime", "Feedback Time", 0, 1, 0.001f, 0.22f);
+    addFloat("feedbackDiffusion", "Feedback Diffusion", 0, 1, 0.001f, 0.12f);
+    addFloat("feedbackFreeze", "Feedback Freeze", 0, 1, 0.001f, 0.0f);
+    addFloat("feedbackSpread", "Feedback Spread", 0, 1, 0.001f, 0.18f);
+    addFloat("feedbackPitch", "Feedback Pitch", 0, 1, 0.001f, 0.50f);
+
+    addFloat("pitchDamage", "Pitch Damage", 0, 1, 0.001f, 0.0f);
+    addFloat("pitchRange", "Pitch Range", 0, 1, 0.001f, 0.32f);
+    addFloat("pitchDrift", "Pitch Drift", 0, 1, 0.001f, 0.0f);
+
+    addFloat("reactiveAmount", "Reactive Amount", 0, 1, 0.001f, 0.0f);
+    addFloat("reactiveTransient", "Reactive Transient", 0, 1, 0.001f, 0.55f);
+    addFloat("reactiveSpectral", "Reactive Spectral", 0, 1, 0.001f, 0.38f);
+    addFloat("reactiveBass", "Reactive Bass", 0, 1, 0.001f, 0.22f);
+    addFloat("reactiveHigh", "Reactive High", 0, 1, 0.001f, 0.44f);
+
+    addFloat("macroCurve", "Macro Curve", 0, 1, 0.001f, 0.50f);
+    addFloat("sceneMorphTime", "Scene Morph Time", 0, 1, 0.001f, 0.50f);
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "fftWindow",
+                "FFT Window",
+                juce::StringArray {
+                    "Hann", "Blackman", "Triangle", "Rect"
+                },
+                0));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "pitchMode",
+                "Pitch Mode",
+                juce::StringArray {
+                    "Micro", "Semitone", "Octave", "Corrupt"
+                },
+                0));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "routingTopology",
+                "Routing Topology",
+                juce::StringArray {
+                    "Serial", "Parallel", "Split", "Crossfade",
+                    "Feedback Loop", "Wide"
+                },
+                0));
+
     p.push_back(
         std::make_unique<
             juce::AudioParameterChoice>(
@@ -530,6 +591,7 @@ void ShakalizerAudioProcessor::prepareToPlay(
     grainWriteIndex = 0;
     feedbackState.fill(0.0f);
     feedbackToneState.fill(0.0f);
+    feedbackBuffer = {};
     feedbackWriteIndex = 0;
     fftFrozenMagnitude = {};
     fftData.fill(0.0f);
@@ -899,6 +961,30 @@ void ShakalizerAudioProcessor::processBlock(
     const float feedbackDrive = clamp01(value("feedbackDrive"));
     const float pitchChaos = clamp01(value("pitchChaos"));
     const float timelineMix = clamp01(value("timelineMix"));
+
+    const float fftSpread = clamp01(value("fftSpread"));
+    const float fftThreshold = clamp01(value("fftThreshold"));
+    const float fftWarp = juce::jlimit(-1.0f, 1.0f, value("fftWarp"));
+    const float grainDensity = clamp01(value("grainDensity"));
+    const float grainPosition = clamp01(value("grainPosition"));
+    const float grainSpray = clamp01(value("grainSpray"));
+    const float grainReverse = clamp01(value("grainReverse"));
+    const float grainPan = clamp01(value("grainPan"));
+    const float feedbackTime = clamp01(value("feedbackTime"));
+    const float feedbackDiffusion = clamp01(value("feedbackDiffusion"));
+    const float feedbackFreeze = clamp01(value("feedbackFreeze"));
+    const float feedbackSpread = clamp01(value("feedbackSpread"));
+    const float feedbackPitch = clamp01(value("feedbackPitch"));
+    const float pitchDamage = clamp01(value("pitchDamage"));
+    const float pitchRange = clamp01(value("pitchRange"));
+    const float pitchDrift = clamp01(value("pitchDrift"));
+    const float reactiveAmount = clamp01(value("reactiveAmount"));
+    const float reactiveTransient = clamp01(value("reactiveTransient"));
+    const float reactiveSpectral = clamp01(value("reactiveSpectral"));
+    const float reactiveBass = clamp01(value("reactiveBass"));
+    const float reactiveHigh = clamp01(value("reactiveHigh"));
+    const float macroCurve = clamp01(value("macroCurve"));
+    const float sceneMorphTime = clamp01(value("sceneMorphTime"));
     const float timelineSteps[8] {
         clamp01(value("timelineStep1")), clamp01(value("timelineStep2")),
         clamp01(value("timelineStep3")), clamp01(value("timelineStep4")),
@@ -911,6 +997,15 @@ void ShakalizerAudioProcessor::processBlock(
             apvts,
             "characterMode",
             0);
+
+    const int fftWindow =
+        choiceIndex(apvts, "fftWindow", 0);
+
+    const int pitchMode =
+        choiceIndex(apvts, "pitchMode", 0);
+
+    const int routingTopology =
+        choiceIndex(apvts, "routingTopology", 0);
 
     const int modWave =
         choiceIndex(
@@ -1379,9 +1474,30 @@ void ShakalizerAudioProcessor::processBlock(
                         static_cast<float>(i)
                         / static_cast<float>(fftSize - 1);
 
-                    const float window =
-                        0.5f
-                        - 0.5f * std::cos(2.0f * pi * phase);
+                    float window = 0.5f;
+                    switch (fftWindow)
+                    {
+                        case 1:
+                            window =
+                                0.42f
+                                - 0.50f * std::cos(2.0f * pi * phase)
+                                + 0.08f * std::cos(4.0f * pi * phase);
+                            break;
+                        case 2:
+                            window =
+                                phase < 0.5f
+                                    ? phase * 2.0f
+                                    : 2.0f - phase * 2.0f;
+                            break;
+                        case 3:
+                            window = 1.0f;
+                            break;
+                        default:
+                            window =
+                                0.5f
+                                - 0.5f * std::cos(2.0f * pi * phase);
+                            break;
+                    }
 
                     fftData[static_cast<size_t>(i)] =
                         input * window;
@@ -1501,6 +1617,29 @@ void ShakalizerAudioProcessor::processBlock(
                                 magnitude,
                                 spread);
                     }
+
+                    const float localThreshold =
+                        fftThreshold * 0.28f;
+
+                    if (magnitude < localThreshold)
+                        magnitude =
+                            juce::jmap(
+                                fftThreshold,
+                                magnitude,
+                                0.0f);
+
+                    const float spreadWarp =
+                        std::sin(
+                            static_cast<float>(bin) * 0.91f
+                            + movementPhase * 0.17f
+                            + fftWarp * 2.4f);
+
+                    magnitude *=
+                        1.0f
+                        + spreadWarp
+                          * fftSpread
+                          * fftShatter
+                          * 0.32f;
 
                     const float phase =
                         std::atan2(im, re)
@@ -1873,8 +2012,31 @@ void ShakalizerAudioProcessor::processBlock(
             localGlitch =
                 clamp01(localGlitch);
 
+            const float reactiveSignal =
+                clamp01(
+                    transientAmount * reactiveTransient
+                    + (bandPeak[1] + bandPeak[2]) * 0.5f * reactiveSpectral
+                    + bandPeak[0] * reactiveBass
+                    + bandPeak[3] * reactiveHigh);
+
             float dynamicIntensity =
                 intensity;
+
+            if (reactiveAmount > 0.0001f)
+            {
+                const float curved =
+                    std::pow(
+                        reactiveSignal,
+                        0.35f
+                        + macroCurve * 1.65f);
+
+                dynamicIntensity =
+                    clamp01(
+                        dynamicIntensity
+                        + curved
+                          * reactiveAmount
+                          * 0.72f);
+            }
 
             if (smart)
             {
@@ -2487,18 +2649,71 @@ void ShakalizerAudioProcessor::processBlock(
                     * (feedbackState[index]
                        - feedbackToneState[index]);
 
+                const int feedbackDelay =
+                    juce::jlimit(
+                        1,
+                        8000,
+                        static_cast<int>(
+                            std::round(
+                                (0.003f
+                                 + feedbackTime * 0.42f)
+                                * currentSampleRate)));
+
+                int feedbackRead =
+                    feedbackWriteIndex
+                    - feedbackDelay;
+
+                while (feedbackRead < 0)
+                    feedbackRead += 8192;
+
+                const float delayed =
+                    feedbackBuffer[index][
+                        static_cast<size_t>(
+                            feedbackRead)];
+
+                const float feedbackSource =
+                    juce::jmap(
+                        feedbackFreeze,
+                        delayed,
+                        feedbackState[index]);
+
                 const float feedbackSample =
                     shapedSample(
-                        feedbackToneState[index],
+                        feedbackSource,
                         feedbackDrive * 14.0f,
                         feedbackDrive * 0.72f);
+
+                const float spread =
+                    feedbackSpread
+                    * stereo
+                    * (index == 0 ? 1.0f : -1.0f);
 
                 wet +=
                     feedbackSample
                     * feedback
-                    * (0.22f + 0.55f * shakal);
+                    * (0.18f + 0.58f * shakal);
 
-                feedbackState[index] = wet;
+                wet +=
+                    spread
+                    * feedbackSample
+                    * feedback
+                    * 0.12f;
+
+                feedbackState[index] =
+                    juce::jmap(
+                        feedbackDiffusion,
+                        wet,
+                        0.5f
+                        * (wet
+                           + feedbackSample));
+
+                feedbackBuffer[index][
+                    static_cast<size_t>(
+                        feedbackWriteIndex)] =
+                    juce::jmap(
+                        feedbackPitch,
+                        feedbackState[index],
+                        delayed);
             }
 
             if (grainMix > 0.0001f)
@@ -2513,11 +2728,82 @@ void ShakalizerAudioProcessor::processBlock(
                                  + grainSize * 0.095f)
                                 * currentSampleRate)));
 
-                const float pitchFactor =
+                const float densityGate =
+                    nextRandom();
+
+                if (densityGate > juce::jlimit(
+                        0.02f,
+                        0.98f,
+                        grainDensity))
+                {
+                    grainPhase[index] +=
+                        1.0f
+                        / static_cast<float>(history);
+                }
+
+                float pitchFactor =
                     juce::jmap(
                         grainPitch,
                         0.50f,
-                        2.00f)
+                        2.00f);
+
+                if (pitchDamage > 0.0001f)
+                {
+                    float damageFactor = 1.0f;
+
+                    switch (pitchMode)
+                    {
+                        case 1:
+                        {
+                            const float semitone =
+                                std::round(
+                                    ((nextRandom() * 2.0f - 1.0f)
+                                     * pitchRange)
+                                    * 12.0f);
+
+                            damageFactor =
+                                std::pow(
+                                    2.0f,
+                                    semitone / 12.0f);
+                            break;
+                        }
+
+                        case 2:
+                            damageFactor =
+                                nextRandom() < 0.5f
+                                    ? 0.5f
+                                    : 2.0f;
+                            break;
+
+                        case 3:
+                            damageFactor =
+                                0.25f
+                                + nextRandom() * 3.5f;
+                            break;
+
+                        default:
+                            damageFactor =
+                                std::pow(
+                                    2.0f,
+                                    (nextRandom() * 2.0f - 1.0f)
+                                    * pitchRange);
+                            break;
+                    }
+
+                    pitchFactor =
+                        juce::jmap(
+                            pitchDamage,
+                            pitchFactor,
+                            pitchFactor * damageFactor);
+                }
+
+                pitchFactor *=
+                    1.0f
+                    + std::sin(
+                        movementPhase * 0.37f
+                        + static_cast<float>(index))
+                      * pitchDrift
+                      * 0.22f
                     * (1.0f
                        + (nextRandom() * 2.0f - 1.0f)
                          * pitchChaos * 0.18f);
@@ -2536,10 +2822,31 @@ void ShakalizerAudioProcessor::processBlock(
                           2.0f * pi
                           * grainPhase[index]);
 
+                const float spray =
+                    (nextRandom() * 2.0f - 1.0f)
+                    * grainSpray
+                    * history;
+
+                const float positionOffset =
+                    (grainPosition - 0.5f)
+                    * history
+                    * 1.6f;
+
                 float read =
                     static_cast<float>(grainWriteIndex)
                     - static_cast<float>(history)
-                      * (0.15f + 0.70f * window);
+                      * (0.15f + 0.70f * window)
+                    + positionOffset
+                    + spray;
+
+                if (grainReverse > 0.001f
+                    && nextRandom() < grainReverse)
+                    read =
+                        static_cast<float>(grainWriteIndex)
+                        + static_cast<float>(history)
+                          * (0.15f + 0.70f * window)
+                        + positionOffset
+                        + spray;
 
                 read +=
                     (nextRandom() * 2.0f - 1.0f)
@@ -3055,14 +3362,67 @@ void ShakalizerAudioProcessor::processBlock(
                        + 0.44f
                          * localShakal));
 
-            const float out =
+            float out =
                 juce::jmap(
                     mix * wetAmount,
                     dry,
                     destroyed);
 
+            // v4 routing topology.
+            switch (routingTopology)
+            {
+                case 1:
+                    out =
+                        0.5f
+                        * (dry + out);
+                    break;
+
+                case 2:
+                    out =
+                        juce::jmap(
+                            reactiveSignal,
+                            dry,
+                            out);
+                    break;
+
+                case 3:
+                    out =
+                        juce::jmap(
+                            0.5f + 0.5f * movementBipolar,
+                            dry,
+                            out);
+                    break;
+
+                case 4:
+                    out =
+                        juce::jlimit(
+                            -1.18f,
+                            1.18f,
+                            out
+                            + feedbackState[index]
+                              * feedback
+                              * 0.08f);
+                    break;
+
+                case 5:
+                    out *=
+                        index == 0
+                            ? 1.0f + stereo * 0.16f
+                            : 1.0f - stereo * 0.16f;
+                    break;
+
+                default:
+                    break;
+            }
+
             grainBuffer[index][
                 static_cast<size_t>(grainWriteIndex)] = out;
+
+            feedbackWriteIndex =
+                feedbackWriteIndex >= 8191
+                    ? 0
+                    : feedbackWriteIndex + 1;
+
 
             buffer.setSample(
                 ch,
