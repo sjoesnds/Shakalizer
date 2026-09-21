@@ -1398,7 +1398,7 @@ void ShakalizerAudioProcessorEditor::loadPreset(
                 ("mod"
                  + juce::String(i)
                  + "Amount").toRawUTF8(),
-                0.0f);
+                0.5f);
         }
 
         setNormalised(
