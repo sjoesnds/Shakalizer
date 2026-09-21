@@ -47,7 +47,7 @@ private:
         float level = 0.0f;
     };
 
-    static constexpr int sliderCount = 52;
+    static constexpr int sliderCount = 78;
 
     void configureSlider(juce::Slider&, const juce::String&,
                          double min, double max, double step);
@@ -93,12 +93,15 @@ private:
     juce::ComboBox routingBox;
     juce::ComboBox msModeBox;
     juce::ComboBox liveSceneBox;
+    juce::ComboBox characterModeBox;
 
-    std::array<juce::ComboBox*, 4> modSourceBoxes {
+    std::array<juce::ComboBox*, 8> modSourceBoxes {
+        nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr
     };
 
-    std::array<juce::ComboBox*, 4> modDestBoxes {
+    std::array<juce::ComboBox*, 8> modDestBoxes {
+        nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr
     };
 
@@ -106,11 +109,19 @@ private:
     juce::ComboBox modSource2Box;
     juce::ComboBox modSource3Box;
     juce::ComboBox modSource4Box;
+    juce::ComboBox modSource5Box;
+    juce::ComboBox modSource6Box;
+    juce::ComboBox modSource7Box;
+    juce::ComboBox modSource8Box;
 
     juce::ComboBox modDest1Box;
     juce::ComboBox modDest2Box;
     juce::ComboBox modDest3Box;
     juce::ComboBox modDest4Box;
+    juce::ComboBox modDest5Box;
+    juce::ComboBox modDest6Box;
+    juce::ComboBox modDest7Box;
+    juce::ComboBox modDest8Box;
 
     juce::TextButton saveAButton { "SAVE A" };
     juce::TextButton abButton { "A / B" };
@@ -189,6 +200,33 @@ private:
     juce::Slider smartTransientProtectSlider;
     juce::Slider smartHighControlSlider;
 
+    juce::Slider mod5AmountSlider;
+    juce::Slider mod6AmountSlider;
+    juce::Slider mod7AmountSlider;
+    juce::Slider mod8AmountSlider;
+    juce::Slider fftMixSlider;
+    juce::Slider fftShatterSlider;
+    juce::Slider fftFreezeSlider;
+    juce::Slider fftBitsSlider;
+    juce::Slider fftShiftSlider;
+    juce::Slider grainMixSlider;
+    juce::Slider grainSizeSlider;
+    juce::Slider grainPitchSlider;
+    juce::Slider grainJitterSlider;
+    juce::Slider feedbackSlider;
+    juce::Slider feedbackToneSlider;
+    juce::Slider feedbackDriveSlider;
+    juce::Slider pitchChaosSlider;
+    juce::Slider timelineMixSlider;
+    juce::Slider timelineStep1Slider;
+    juce::Slider timelineStep2Slider;
+    juce::Slider timelineStep3Slider;
+    juce::Slider timelineStep4Slider;
+    juce::Slider timelineStep5Slider;
+    juce::Slider timelineStep6Slider;
+    juce::Slider timelineStep7Slider;
+    juce::Slider timelineStep8Slider;
+
     std::array<juce::Slider*, sliderCount> sliders {
         &shakalSlider, &destroySlider, &crushSlider, &decimateSlider,
         &driveSlider, &clipSlider, &glitchSlider, &jitterSlider,
@@ -208,7 +246,16 @@ private:
         &spectralRingSlider,
         &modRateSlider, &modDepthSlider, &modSmoothSlider,
         &smartAmountSlider, &smartBassProtectSlider,
-        &smartTransientProtectSlider, &smartHighControlSlider
+        &smartTransientProtectSlider, &smartHighControlSlider,
+        &mod5AmountSlider, &mod6AmountSlider, &mod7AmountSlider,
+        &mod8AmountSlider, &fftMixSlider, &fftShatterSlider,
+        &fftFreezeSlider, &fftBitsSlider, &fftShiftSlider,
+        &grainMixSlider, &grainSizeSlider, &grainPitchSlider,
+        &grainJitterSlider, &feedbackSlider, &feedbackToneSlider,
+        &feedbackDriveSlider, &pitchChaosSlider, &timelineMixSlider,
+        &timelineStep1Slider, &timelineStep2Slider, &timelineStep3Slider,
+        &timelineStep4Slider, &timelineStep5Slider, &timelineStep6Slider,
+        &timelineStep7Slider, &timelineStep8Slider
     };
 
     std::array<juce::String, sliderCount> sliderNames {
@@ -226,7 +273,12 @@ private:
         "SPECTRAL FREEZE", "SPECTRAL BITS", "SPECTRAL RING",
         "MOD RATE", "MOD DEPTH", "MOD SMOOTH",
         "SMART AMOUNT", "SMART BASS", "SMART TRANSIENT",
-        "SMART HIGH"
+        "SMART HIGH", "MOD 5", "MOD 6", "MOD 7", "MOD 8",
+        "FFT MIX", "FFT SHATTER", "FFT FREEZE", "FFT BITS",
+        "FFT SHIFT", "GRAIN MIX", "GRAIN SIZE", "GRAIN PITCH",
+        "GRAIN JITTER", "FEEDBACK", "FEEDBACK TONE", "FEEDBACK DRIVE",
+        "PITCH CHAOS", "TIMELINE MIX", "STEP 1", "STEP 2", "STEP 3",
+        "STEP 4", "STEP 5", "STEP 6", "STEP 7", "STEP 8"
     };
 
     std::vector<std::unique_ptr<
@@ -293,12 +345,16 @@ private:
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>
         liveSceneAttachment;
 
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        characterModeAttachment;
+
     std::array<std::unique_ptr<
-        juce::AudioProcessorValueTreeState::ComboBoxAttachment>, 4>
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>, 8>
         modSourceAttachments;
 
     std::array<std::unique_ptr<
-        juce::AudioProcessorValueTreeState::ComboBoxAttachment>, 4>
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>, 8>
         modDestAttachments;
 
     std::vector<float> abState;
