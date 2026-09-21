@@ -1493,19 +1493,24 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
     };
 
     const std::array<
-        const char*, 13> spectral {
+        const char*, 18> spectral {
         "shatter", "fold", "shift",
         "resonance", "envFollow",
         "bandLow", "bandMid", "bandHigh",
         "bandAir", "character", "morph",
-        "filterFreq", "spectralMode"
+        "filterFreq", "spectralMode",
+        "spectralMix", "spectralSmear",
+        "spectralFreezeAmount", "spectralBits",
+        "spectralRing"
     };
 
     const std::array<
-        const char*, 14> glitch {
+        const char*, 18> glitch {
         "glitch", "jitter", "movement",
         "unstable", "stereo", "alien",
         "glitchMode", "glitchLength",
+        "glitchDensity", "glitchProbability",
+        "glitchFade", "glitchVariation",
         "mod1Amount", "mod2Amount",
         "mod3Amount", "mod4Amount",
         "morph", "mix"
@@ -1604,7 +1609,11 @@ void ShakalizerAudioProcessorEditor::loadPreset(
         setNormalised(processor, "spectralFreezeAmount", 0.0f);
         setNormalised(processor, "spectralBits", 0.08f);
         setNormalised(processor, "spectralRing", 0.0f);
-        setNormalised(processor, "modRate", 1.25f / 20.0f);
+        setNormalised(
+            processor,
+            "modRate",
+            (1.25f - 0.05f)
+            / (20.0f - 0.05f));
         setNormalised(processor, "modDepth", 0.70f);
         setNormalised(processor, "modSmooth", 0.54f);
 
