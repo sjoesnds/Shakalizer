@@ -124,6 +124,7 @@ private:
     juce::TextButton randomModButton { "MOD" };
     juce::TextButton savePresetButton { "SAVE" };
     juce::TextButton loadPresetButton { "LOAD" };
+    juce::TextButton favoritePresetButton { "FAV" };
 
     juce::Label meterLabel { {}, "OUT" };
     juce::Label cpuLabel { {}, "CPU 0%" };
@@ -303,6 +304,7 @@ private:
     std::vector<float> abState;
     bool hasAState = false;
 
+    std::array<bool, 13> favoritePresets {};
     std::unique_ptr<juce::FileChooser> presetFileChooser;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
