@@ -44,7 +44,7 @@ private:
     float tpdfDither(float step) noexcept;
     float shapedSample(float x, float drive, float clip) const noexcept;
     float waveFold(float x, float amount) const noexcept;
-    float getMovementValue(int shape, float phase) noexcept;
+    float movementValue(int shape, float phase) const noexcept;
     void setFilterFromParameters(int type, float cutoff, float resonance);
 
     juce::AudioProcessorValueTreeState apvts;
@@ -62,6 +62,7 @@ private:
 
     std::array<juce::dsp::StateVariableTPTFilter<float>, 2> postFilter;
     std::array<juce::dsp::StateVariableTPTFilter<float>, 2> safetyFilter;
+
     juce::AudioBuffer<float> dryBuffer;
 
     std::array<int, 2> holdRemaining { 0, 0 };
@@ -69,7 +70,6 @@ private:
     std::array<float, 2> heldSample { 0.0f, 0.0f };
     std::array<float, 2> previousHeldSample { 0.0f, 0.0f };
 
-    // Four inexpensive broad spectral bands.
     std::array<float, 2> splitLow1 { 0.0f, 0.0f };
     std::array<float, 2> splitLow2 { 0.0f, 0.0f };
     std::array<float, 2> splitLow3 { 0.0f, 0.0f };
@@ -96,6 +96,7 @@ private:
     std::array<float, 2> alienPhase { 0.0f, 0.0f };
 
     float autoMatchGain = 1.0f;
+    float morphPhase = 0.0f;
 
     std::uint32_t rngState = 0xA341316Cu;
     std::atomic<float> meterLevel { 0.0f };
