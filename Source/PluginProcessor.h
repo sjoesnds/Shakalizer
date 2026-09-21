@@ -91,6 +91,8 @@ private:
 
     std::array<float, 4> modSmoothState { 0.0f, 0.0f, 0.0f, 0.0f };
     float modPhase = 0.0f;
+    float modHoldValue = 0.0f;
+    int modHoldCounter = 0;
 
     std::array<std::array<float, 8192>, 2> resonatorBuffer {};
     int resonatorWriteIndex = 0;
