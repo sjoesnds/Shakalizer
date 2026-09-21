@@ -40,6 +40,9 @@ public:
     int getScopeWriteIndex() const noexcept { return scopeWriteIndex.load(); }
     float getBandLevel(int band) const noexcept { return bandLevels[static_cast<size_t>(juce::jlimit(0, 3, band))].load(); }
     float getCpuLoad() const noexcept { return cpuLoad.load(); }
+    float getSpectrumBin(int index) const noexcept { return spectrumBuffer[static_cast<size_t>(juce::jlimit(0, 63, index))].load(); }
+    float getGlitchActivity() const noexcept { return glitchActivity.load(); }
+    float getModulationActivity() const noexcept { return modulationActivity.load(); }
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -91,7 +94,7 @@ private:
 
     std::array<float, 2> spectralFreeze { 0.0f, 0.0f };
 
-    std::array<float, 4> modSmoothState { 0.0f, 0.0f, 0.0f, 0.0f };
+    std::array<float, 8> modSmoothState { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
     float modPhase = 0.0f;
     float modHoldValue = 0.0f;
     int modHoldCounter = 0;
@@ -110,6 +113,20 @@ private:
 
     std::array<float, 2> alienPhase { 0.0f, 0.0f };
 
+    static constexpr int fftSize = 128;
+    juce::dsp::FFT fft { 7 };
+    std::array<float, 256> fftData {};
+    std::array<float, 256> fftSource {};
+    std::array<std::array<float, 65>, 2> fftFrozenMagnitude {};
+    juce::AudioBuffer<float> fftWetBuffer;
+
+    std::array<std::array<float, 16384>, 2> grainBuffer {};
+    std::array<float, 2> grainPhase { 0.0f, 0.0f };
+    int grainWriteIndex = 0;
+    std::array<float, 2> feedbackState { 0.0f, 0.0f };
+    std::array<float, 2> feedbackToneState { 0.0f, 0.0f };
+    int feedbackWriteIndex = 0;
+
     float autoMatchGain = 1.0f;
     float morphPhase = 0.0f;
 
@@ -117,6 +134,9 @@ private:
     std::array<std::atomic<float>, 256> scopeBuffer {};
     std::atomic<int> scopeWriteIndex { 0 };
     std::array<std::atomic<float>, 4> bandLevels {};
+    std::array<std::atomic<float>, 64> spectrumBuffer {};
+    std::atomic<float> glitchActivity { 0.0f };
+    std::atomic<float> modulationActivity { 0.0f };
     std::atomic<float> cpuLoad { 0.0f };
     std::atomic<float> meterLevel { 0.0f };
 
