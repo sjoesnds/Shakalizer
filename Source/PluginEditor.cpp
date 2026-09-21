@@ -598,6 +598,11 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         randomizeScope(3);
     };
 
+    randomModButton.onClick = [this]
+    {
+        randomizeScope(4);
+    };
+
     for (auto* button : {
         &saveAButton,
         &abButton,
@@ -608,7 +613,8 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         &loadPresetButton,
         &randomCoreButton,
         &randomShatterButton,
-        &randomGlitchButton
+        &randomGlitchButton,
+        &randomModButton
     })
     {
         button->setColour(
@@ -1149,6 +1155,12 @@ void ShakalizerAudioProcessorEditor::resized()
         103,
         26);
 
+    randomModButton.setBounds(
+        1056,
+        87,
+        58,
+        23);
+
     savePresetButton.setBounds(
         926,
         87,
@@ -1558,12 +1570,22 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
         }
     };
 
+    const std::array<
+        const char*, 9> modulation {
+        "mod1Amount", "mod2Amount",
+        "mod3Amount", "mod4Amount",
+        "modRate", "modDepth", "modSmooth",
+        "modWave", "modSync"
+    };
+
     if (scope == 1)
         randomizeIds(core);
     else if (scope == 2)
         randomizeIds(spectral);
     else if (scope == 3)
         randomizeIds(glitch);
+    else if (scope == 4)
+        randomizeIds(modulation);
 
     presetBox.setSelectedId(
         1,
