@@ -1,4 +1,4 @@
-# Shakalizer v2.2
+# Shakalizer v3.0
 
 Shakalizer is a VST3 digital-destruction effect built around controlled digital damage instead of generic harsh distortion.
 
@@ -94,3 +94,21 @@ The editor now includes a live output scope, `.shakal` preset save/load, expande
 - **Visual Lab:** live waveform scope plus LOW / MID / HIGH / AIR peak telemetry.
 - **Performance Lab:** realtime CPU-load telemetry and final finite-sample output protection against NaN/Inf propagation.
 - **Preset Lab:** user `.shakal` save/load, factory FAV markers, A/B state swapping and scoped randomization.
+
+
+## v3.0 — Destruction Workstation
+
+The v3 engine adds a realtime 128-sample FFT destruction/resynthesis stage, deterministic 8-step glitch timeline, 8-slot modulation matrix, character fingerprints, granular micro-stutter processing, bounded feedback destruction, pitch-chaos control, spectrum telemetry, and expanded preset/randomization coverage.
+
+### v3 modules
+
+- **FFT Spectral Lab:** mix, shatter, freeze, spectral bit reduction and frequency shift.
+- **Glitch Timeline:** eight intensity steps synchronized to the host timing phase.
+- **Modulation Workstation:** eight modulation slots with LFO / envelope / random / step / beat sources.
+- **Character Engine:** Digital, VHS, Console, Radio, Metallic, Broken, Alien, Cheap DAC and Corrupt fingerprints.
+- **Granular / Micro-Stutter:** grain size, pitch, jitter and blend.
+- **Feedback Engine:** feedback amount, tone and feedback drive with bounded nonlinear feedback.
+- **Telemetry:** live FFT spectrum plus glitch/modulation activity and CPU reporting.
+- **Stability:** fixed-size DSP buffers remain allocation-free during audio processing and final finite-sample protection stays enabled.
+
+The v3 FFT stage intentionally uses short non-overlapping windows to keep the effect responsive inside a realtime VST3 host.
