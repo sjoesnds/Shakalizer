@@ -63,6 +63,9 @@ private:
     void randomizeAll();
     void randomizeScope(int scope);
 
+    void savePresetToFile();
+    void loadPresetFromFile();
+
     void loadPreset(int index);
 
     void captureState(std::vector<float>& destination);
@@ -82,6 +85,9 @@ private:
     juce::ComboBox qualityBox;
     juce::ComboBox syncBox;
     juce::ComboBox glitchGridBox;
+    juce::ComboBox glitchModeBox;
+    juce::ComboBox glitchLengthBox;
+    juce::ComboBox spectralModeBox;
     juce::ComboBox routingBox;
     juce::ComboBox msModeBox;
     juce::ComboBox liveSceneBox;
@@ -113,6 +119,8 @@ private:
     juce::TextButton randomCoreButton { "CORE" };
     juce::TextButton randomShatterButton { "SHATTER" };
     juce::TextButton randomGlitchButton { "GLITCH" };
+    juce::TextButton savePresetButton { "SAVE" };
+    juce::TextButton loadPresetButton { "LOAD" };
 
     juce::Label meterLabel { {}, "OUT" };
     Meter meter;
@@ -213,6 +221,18 @@ private:
     std::unique_ptr<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>
         glitchGridAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        glitchModeAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        glitchLengthAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        spectralModeAttachment;
 
     std::unique_ptr<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>
