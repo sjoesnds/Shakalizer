@@ -43,6 +43,7 @@ private:
     float nextRandom();
     float tpdfDither(float step) noexcept;
     float shapedSample(float x, float drive, float clip) const noexcept;
+    float waveFold(float x, float amount) const noexcept;
     float getMovementValue(int shape, float phase) noexcept;
     void setFilterFromParameters(int type, float cutoff, float resonance);
 
@@ -51,7 +52,11 @@ private:
     double currentSampleRate = 44100.0;
     int maxBlockSize = 0;
 
-    juce::dsp::Oversampling<float> oversampler {
+    juce::dsp::Oversampling<float> oversampler2x {
+        2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true
+    };
+
+    juce::dsp::Oversampling<float> oversampler4x {
         2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true
     };
 
@@ -59,11 +64,14 @@ private:
 
     std::array<int, 2> holdRemaining { 0, 0 };
     std::array<int, 2> currentHoldLength { 1, 1 };
-
     std::array<float, 2> heldSample { 0.0f, 0.0f };
     std::array<float, 2> previousHeldSample { 0.0f, 0.0f };
 
-    std::array<float, 2> splitLowState { 0.0f, 0.0f };
+    // Four spectral crossover states per channel.
+    std::array<float, 2> splitLow1 { 0.0f, 0.0f };
+    std::array<float, 2> splitLow2 { 0.0f, 0.0f };
+    std::array<float, 2> splitLow3 { 0.0f, 0.0f };
+
     std::array<float, 2> fastEnvelope { 0.0f, 0.0f };
     std::array<float, 2> slowEnvelope { 0.0f, 0.0f };
 
@@ -71,7 +79,12 @@ private:
     std::array<int, 2> glitchRemaining { 0, 0 };
     std::array<int, 2> glitchCooldown { 0, 0 };
 
+    // Simple resonator/comb memory.
+    std::array<std::array<float, 8192>, 2> resonatorBuffer {};
+    int resonatorWriteIndex = 0;
+
     float movementPhase = 0.0f;
+    float glitchGridPhase = 0.0f;
     float unstableValue = 0.0f;
     int unstableRemaining = 0;
 
