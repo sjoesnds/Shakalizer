@@ -1260,6 +1260,9 @@ void ShakalizerAudioProcessor::processBlock(
     float inputEnergy = 0.0f;
     float processedEnergy = 0.0f;
     float blockPeak = 0.0f;
+    std::array<float, 4> bandPeak {
+        0.0f, 0.0f, 0.0f, 0.0f
+    };
 
     for (int sample = 0;
          sample < samples;
@@ -1596,7 +1599,7 @@ void ShakalizerAudioProcessor::processBlock(
                         localShatter
                         * juce::jmap(
                             smartHighControl
-                            * highAmt,
+                            * bandHigh,
                             1.0f,
                             0.82f));
             }
@@ -1758,6 +1761,23 @@ void ShakalizerAudioProcessor::processBlock(
 
             const float air =
                 source - splitLow3[index];
+
+            bandPeak[0] =
+                juce::jmax(
+                    bandPeak[0],
+                    std::abs(low));
+            bandPeak[1] =
+                juce::jmax(
+                    bandPeak[1],
+                    std::abs(mid));
+            bandPeak[2] =
+                juce::jmax(
+                    bandPeak[2],
+                    std::abs(high));
+            bandPeak[3] =
+                juce::jmax(
+                    bandPeak[3],
+                    std::abs(air));
 
             const float shatterBase =
                 localShatter
@@ -2720,6 +2740,18 @@ void ShakalizerAudioProcessor::processBlock(
                     -1.0f,
                     1.0f,
                     0.5f * (left + right)));
+    }
+
+    for (size_t band = 0;
+         band < bandLevels.size();
+         ++band)
+    {
+        const float previous =
+            bandLevels[band].load();
+
+        bandLevels[band].store(
+            0.20f * bandPeak[band]
+            + 0.80f * previous);
     }
 
     meterLevel.store(
