@@ -932,6 +932,67 @@ void ShakalizerAudioProcessorEditor::paint(
             14,
             juce::Justification::left,
             false);
+
+        const float barY =
+            scope.getBottom() - 31.0f;
+        const float barW = 42.0f;
+        const float gap = 6.0f;
+        const char* bandNames[] {
+            "LOW", "MID", "HIGH", "AIR"
+        };
+
+        for (int band = 0; band < 4; ++band)
+        {
+            const float level =
+                juce::jlimit(
+                    0.0f,
+                    1.0f,
+                    processor.getBandLevel(band));
+
+            const float bx =
+                scope.getX()
+                + 8.0f
+                + band * (barW + gap);
+
+            g.setColour(
+                juce::Colour::fromRGB(
+                    37, 31, 42));
+
+            g.fillRoundedRectangle(
+                bx,
+                barY,
+                barW,
+                8.0f,
+                3.0f);
+
+            g.setColour(
+                accent.withAlpha(
+                    0.35f
+                    + 0.55f * level));
+
+            g.fillRoundedRectangle(
+                bx,
+                barY,
+                barW * level,
+                8.0f,
+                3.0f);
+
+            g.setColour(muted);
+            g.setFont(
+                juce::Font(
+                    juce::FontOptions(
+                        7.0f,
+                        juce::Font::bold)));
+
+            g.drawText(
+                bandNames[band],
+                static_cast<int>(bx),
+                static_cast<int>(barY + 10.0f),
+                static_cast<int>(barW),
+                11,
+                juce::Justification::centred,
+                false);
+        }
     }
 
     g.setColour(line);
