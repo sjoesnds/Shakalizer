@@ -1,26 +1,30 @@
-# Shakalizer
+# Shakalizer v0.2
 
-A VST3 effect for FL Studio focused on aggressive digital destruction, bit crushing, sample-rate reduction, clipping, glitch holds, jitter and lo-fi filtering.
+A VST3 effect for FL Studio focused on controlled digital destruction rather than generic distortion.
 
-## Sound
+## Processing
 
-Shakalizer is built around deliberately mangled digital texture: hard digital clipping, quantization, sample-and-hold style decimation, short glitch events and tone shaping. It is an original effect rather than a recreation of a specific artist or proprietary plugin.
+- 4x oversampled nonlinear stage for cleaner distortion.
+- Multiple resampling styles: Hold, Linear, Stair, Smear and Random.
+- Bit-depth reduction with TPDF dither.
+- Hard/soft clipping blend with level compensation.
+- Frequency split to protect the low end while destroying the upper content.
+- Envelope-aware processing with separate Transient and Body controls.
+- Stereo widening plus independent channel movement.
+- Movement modulation with Sine, Triangle, Sample+Hold and Stepped shapes.
+- Unstable slow random modulation.
+- Alien ring-modulation mode.
+- Three post filter types: Low Pass, Band Pass and High Pass.
+- Sparse glitch/freeze events.
+- Auto Match loudness compensation.
+- A/B snapshot swapping.
+- Random parameter generator.
 
-## Controls
+## Modes
 
-- DESTROY — global destruction macro
-- CRUSH — bit-depth reduction
-- DECIMATE — sample-and-hold / sample-rate destruction
-- DRIVE — pre-shaper gain
-- CLIP — hard clipping
-- GLITCH — short digital hold/stutter events
-- JITTER — randomizes sample-and-hold lengths
-- TONE — post-destruction low-pass
-- MIX — dry/wet
-- OUTPUT — final gain
-- MODE — Clean / Crunch / Shakal / Destroy / Fried
+Clean, Crunch, Shakal, Destroy, Fried, Pixel, Alien and Melt.
 
-RANDOMIZE generates fast experimental combinations.
+The sound target is an original digital-destruction tool for aggressive SoundCloud-style production workflows; it is not a recreation of a particular artist or proprietary plugin.
 
 ## Build
 
@@ -29,4 +33,6 @@ Windows:
     cmake -S . -B build-shakalizer
     cmake --build build-shakalizer --config Release --parallel
 
-GitHub Actions builds and uploads a Windows VST3 artifact automatically.
+GitHub Actions builds and uploads the Windows VST3 artifact automatically.
+
+The current CI workflow only runs for source/CMake/workflow changes, not README-only commits.
