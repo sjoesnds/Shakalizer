@@ -1034,6 +1034,11 @@ void ShakalizerAudioProcessor::processBlock(
         / static_cast<float>(
             currentSampleRate);
 
+    const float modIncrement =
+        2.0f * pi * modRate
+        / static_cast<float>(
+            currentSampleRate);
+
     const float splitAlpha1 =
         onePoleAlpha(
             100.0f
@@ -1196,6 +1201,12 @@ void ShakalizerAudioProcessor::processBlock(
         movementPhase +=
             movementIncrement;
 
+        modPhase +=
+            modIncrement;
+
+        if (modPhase >= 2.0f * pi)
+            modPhase -= 2.0f * pi;
+
         syncPhase +=
             movementIncrement;
 
@@ -1311,7 +1322,7 @@ void ShakalizerAudioProcessor::processBlock(
                     case 1:
                         source =
                             bipolarToUnit(
-                                movementBipolar);
+                                std::sin(modPhase));
                         break;
 
                     case 2:
@@ -1347,10 +1358,26 @@ void ShakalizerAudioProcessor::processBlock(
                 const float signedSource =
                     source * 2.0f - 1.0f;
 
+                const float modTarget =
+                    juce::jlimit(
+                        -1.0f,
+                        1.0f,
+                        signedSource
+                        * modAmounts[slot]
+                        * modDepth);
+
+                const float modSmoothing =
+                    0.025f
+                    + modSmooth * 0.45f;
+
+                modSmoothState[slot] +=
+                    modSmoothing
+                    * (modTarget
+                       - modSmoothState[slot]);
+
                 applyMod(
                     modDests[slot],
-                    signedSource
-                    * modAmounts[slot],
+                    modSmoothState[slot],
                     localShakal,
                     localDestroy,
                     localCrush,
@@ -1611,7 +1638,12 @@ void ShakalizerAudioProcessor::processBlock(
                 if (amount <= 0.0001f)
                     return band;
 
-                float effectiveAmount = amount;
+                float effectiveAmount =
+                    amount
+                    * juce::jlimit(
+                        0.0f,
+                        1.0f,
+                        spectralMix);
 
                 if (spectralMode == 2)
                     effectiveAmount *= 0.58f;
@@ -1644,6 +1676,15 @@ void ShakalizerAudioProcessor::processBlock(
                         11,
                         bits - 2);
 
+                if (spectralBits > 0.001f)
+                    bits = juce::jlimit(
+                        3,
+                        16,
+                        bits
+                        - static_cast<int>(
+                            std::round(
+                                spectralBits * 9.0f)));
+
                 const float levels =
                     static_cast<float>(
                         (1u << bits) - 1u);
@@ -1659,23 +1700,38 @@ void ShakalizerAudioProcessor::processBlock(
 
                 if (spectralMode == 2)
                 {
+                    const float smearAmount =
+                        juce::jlimit(
+                            0.0f,
+                            1.0f,
+                            spectralSmear
+                            + effectiveAmount * 0.55f);
+
                     x =
                         juce::jmap(
-                            effectiveAmount * 0.55f,
+                            smearAmount,
                             x,
                             resampled);
                 }
                 else if (spectralMode == 3)
                 {
+                    const float freezeAmount =
+                        juce::jlimit(
+                            0.0f,
+                            1.0f,
+                            spectralFreezeAmount
+                            + effectiveAmount * 0.72f);
+
                     spectralFreeze[index] =
                         juce::jmap(
-                            0.008f + effectiveAmount * 0.025f,
+                            0.006f
+                            + freezeAmount * 0.028f,
                             spectralFreeze[index],
                             x);
 
                     x =
                         juce::jmap(
-                            effectiveAmount * 0.72f,
+                            freezeAmount,
                             x,
                             spectralFreeze[index]);
                 }
@@ -1688,9 +1744,16 @@ void ShakalizerAudioProcessor::processBlock(
                             + static_cast<float>(index) * 0.91f);
 
                     x *=
-                        0.72f
-                        + 0.28f * ring
-                        * effectiveAmount;
+                        1.0f
+                        + ring
+                          * spectralRing
+                          * 0.42f;
+
+                    x =
+                        juce::jlimit(
+                            -1.25f,
+                            1.25f,
+                            x);
                 }
 
                 const float step =
@@ -1748,9 +1811,17 @@ void ShakalizerAudioProcessor::processBlock(
                 + destroyBand(high, highAmt)
                 + destroyBand(air, airAmt);
 
+            const float spectralBlend =
+                juce::jlimit(
+                    0.0f,
+                    1.0f,
+                    spectralMix
+                    * (0.50f
+                       + 0.50f * shatterBase));
+
             float wet =
                 juce::jmap(
-                    lowAmt,
+                    spectralBlend,
                     source,
                     shattered);
 
@@ -1918,6 +1989,8 @@ void ShakalizerAudioProcessor::processBlock(
             const float triggerChance =
                 gridSlots > 0
                     ? localGlitch
+                      * glitchDensity
+                      * glitchProbability
                       * (0.025f
                          + dynamicIntensity * 0.12f)
                       * (gridBoundary ? 1.0f : 0.0f)
@@ -1938,6 +2011,12 @@ void ShakalizerAudioProcessor::processBlock(
                 && glitchCooldown[index] <= 0
                 && nextRandom() < triggerChance)
             {
+                const float eventVariation =
+                    0.55f
+                    + 0.65f * localGlitch
+                    + (nextRandom() * 2.0f - 1.0f)
+                      * glitchVariation * 0.55f;
+
                 glitchEventLength[index] =
                     juce::jlimit(
                         8,
@@ -1945,9 +2024,7 @@ void ShakalizerAudioProcessor::processBlock(
                         static_cast<int>(
                             std::round(
                                 requestedGlitchSamples
-                                * (0.55f
-                                   + 0.65f
-                                     * localGlitch))));
+                                * eventVariation)));
 
                 glitchEventAge[index] = 0;
                 glitchRemaining[index] =
@@ -1981,6 +2058,18 @@ void ShakalizerAudioProcessor::processBlock(
                             juce::jmax(
                                 1,
                                 eventLength - 1)));
+
+                const float fadeCurve =
+                    std::sin(
+                        p * pi);
+
+                const float glitchBlend =
+                    juce::jlimit(
+                        0.0f,
+                        1.0f,
+                        0.30f
+                        + glitchFade * 0.70f)
+                    * fadeCurve;
 
                 switch (glitchMode)
                 {
@@ -2104,6 +2193,12 @@ void ShakalizerAudioProcessor::processBlock(
                         break;
                     }
                 }
+
+                wet =
+                    juce::jmap(
+                        glitchBlend,
+                        wet,
+                        glitchValue[index]);
 
                 ++glitchEventAge[index];
                 --glitchRemaining[index];
