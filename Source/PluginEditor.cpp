@@ -583,6 +583,32 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         loadPresetFromFile();
     };
 
+    favoritePresetButton.onClick = [this]
+    {
+        const selected =
+            presetBox.getSelectedItemIndex();
+
+        if (selected > 0)
+        {
+            const index =
+                juce::jlimit(
+                    0,
+                    static_cast<int>(
+                        favoritePresets.size()) - 1,
+                    selected - 1);
+
+            favoritePresets[
+                static_cast<size_t>(index)] =
+                !favoritePresets[
+                    static_cast<size_t>(index)];
+
+            favoritePresetButton.setToggleState(
+                favoritePresets[
+                    static_cast<size_t>(index)],
+                juce::dontSendNotification);
+        }
+    };
+
     randomCoreButton.onClick = [this]
     {
         randomizeScope(1);
@@ -611,6 +637,7 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         &randomAllButton,
         &savePresetButton,
         &loadPresetButton,
+        &favoritePresetButton,
         &randomCoreButton,
         &randomShatterButton,
         &randomGlitchButton,
@@ -1252,6 +1279,12 @@ void ShakalizerAudioProcessorEditor::resized()
         58,
         23);
 
+    favoritePresetButton.setBounds(
+        1054,
+        87,
+        50,
+        23);
+
     meterLabel.setBounds(
         1415,
         52,
@@ -1385,6 +1418,23 @@ void ShakalizerAudioProcessorEditor::timerCallback()
             .getRawParameterValue(
                 "smart")
             ->load() > 0.5f;
+
+    const int selectedPreset =
+        presetBox.getSelectedItemIndex();
+
+    const bool favoriteOn =
+        selectedPreset > 0
+        && favoritePresets[
+            static_cast<size_t>(
+                juce::jlimit(
+                    0,
+                    static_cast<int>(
+                        favoritePresets.size()) - 1,
+                    selectedPreset - 1))];
+
+    favoritePresetButton.setToggleState(
+        favoriteOn,
+        juce::dontSendNotification);
 
     autoMatchButton.setToggleState(
         autoOn,
