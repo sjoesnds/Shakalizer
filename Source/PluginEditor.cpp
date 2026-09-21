@@ -440,8 +440,6 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
             juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
                 processor.getAPVTS(), "liveScene", liveSceneBox);
 
-    juce::ignoreUnused(
-        attachmentList);
 
     presetBox.onChange = [this]
     {
