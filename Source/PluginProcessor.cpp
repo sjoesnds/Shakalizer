@@ -96,7 +96,7 @@ ShakalizerAudioProcessor::createParameterLayout()
 
     addFloat("shakal", "Shakal", 0, 1, 0.001f, 0.50f);
     addFloat("destroy", "Destroy", 0, 1, 0.001f, 0.42f);
-    addFloat("crush", "Crush", 0, 1, 0.34f * 1.0f, 0.34f);
+    addFloat("crush", "Crush", 0, 1, 0.001f, 0.34f);
     addFloat("decimate", "Decimate", 0, 1, 0.001f, 0.28f);
     addFloat("drive", "Drive", 0, 1, 0.001f, 0.30f);
     addFloat("clip", "Clip", 0, 1, 0.001f, 0.20f);
@@ -999,7 +999,7 @@ void ShakalizerAudioProcessor::processBlock(
     }
 
     auto nonlinearStage =
-        [this, drive, clip, preGain]
+        [this, drive, clip, preGain, modeScale]
         (juce::dsp::AudioBlock<float>& block)
     {
         const float pre =
@@ -1020,11 +1020,32 @@ void ShakalizerAudioProcessor::processBlock(
                 const float x =
                     data[sample] * pre;
 
-                data[sample] =
-                    shapedSample(
-                        x,
-                        drive * 0.82f,
-                        clip * 0.70f);
+                if (modeScale < 0.2f)
+                {
+                    data[sample] = x;
+                }
+                else
+                {
+                    const float stageScale =
+                        juce::jlimit(
+                            0.0f,
+                            1.0f,
+                            modeScale);
+
+                    data[sample] =
+                        shapedSample(
+                            x,
+                            drive
+                                * (0.45f
+                                   + 0.55f
+                                     * stageScale)
+                                * 0.82f,
+                            clip
+                                * (0.35f
+                                   + 0.65f
+                                     * stageScale)
+                                * 0.70f);
+                }
             }
         }
     };
