@@ -47,7 +47,7 @@ private:
         float level = 0.0f;
     };
 
-    static constexpr int sliderCount = 78;
+    static constexpr int sliderCount = 101;
 
     void configureSlider(juce::Slider&, const juce::String&,
                          double min, double max, double step);
@@ -94,6 +94,9 @@ private:
     juce::ComboBox msModeBox;
     juce::ComboBox liveSceneBox;
     juce::ComboBox characterModeBox;
+    juce::ComboBox fftWindowBox;
+    juce::ComboBox pitchModeBox;
+    juce::ComboBox routingTopologyBox;
 
     std::array<juce::ComboBox*, 8> modSourceBoxes {
         nullptr, nullptr, nullptr, nullptr,
@@ -227,6 +230,30 @@ private:
     juce::Slider timelineStep7Slider;
     juce::Slider timelineStep8Slider;
 
+    juce::Slider fftSpreadSlider;
+    juce::Slider fftThresholdSlider;
+    juce::Slider fftWarpSlider;
+    juce::Slider grainDensitySlider;
+    juce::Slider grainPositionSlider;
+    juce::Slider grainSpraySlider;
+    juce::Slider grainReverseSlider;
+    juce::Slider grainPanSlider;
+    juce::Slider feedbackTimeSlider;
+    juce::Slider feedbackDiffusionSlider;
+    juce::Slider feedbackFreezeSlider;
+    juce::Slider feedbackSpreadSlider;
+    juce::Slider feedbackPitchSlider;
+    juce::Slider pitchDamageSlider;
+    juce::Slider pitchRangeSlider;
+    juce::Slider pitchDriftSlider;
+    juce::Slider reactiveAmountSlider;
+    juce::Slider reactiveTransientSlider;
+    juce::Slider reactiveSpectralSlider;
+    juce::Slider reactiveBassSlider;
+    juce::Slider reactiveHighSlider;
+    juce::Slider macroCurveSlider;
+    juce::Slider sceneMorphTimeSlider;
+
     std::array<juce::Slider*, sliderCount> sliders {
         &shakalSlider, &destroySlider, &crushSlider, &decimateSlider,
         &driveSlider, &clipSlider, &glitchSlider, &jitterSlider,
@@ -255,7 +282,15 @@ private:
         &feedbackDriveSlider, &pitchChaosSlider, &timelineMixSlider,
         &timelineStep1Slider, &timelineStep2Slider, &timelineStep3Slider,
         &timelineStep4Slider, &timelineStep5Slider, &timelineStep6Slider,
-        &timelineStep7Slider, &timelineStep8Slider
+        &timelineStep7Slider, &timelineStep8Slider,
+        &fftSpreadSlider, &fftThresholdSlider, &fftWarpSlider,
+        &grainDensitySlider, &grainPositionSlider, &grainSpraySlider,
+        &grainReverseSlider, &grainPanSlider, &feedbackTimeSlider,
+        &feedbackDiffusionSlider, &feedbackFreezeSlider, &feedbackSpreadSlider,
+        &feedbackPitchSlider, &pitchDamageSlider, &pitchRangeSlider,
+        &pitchDriftSlider, &reactiveAmountSlider, &reactiveTransientSlider,
+        &reactiveSpectralSlider, &reactiveBassSlider, &reactiveHighSlider,
+        &macroCurveSlider, &sceneMorphTimeSlider
     };
 
     std::array<juce::String, sliderCount> sliderNames {
@@ -278,7 +313,14 @@ private:
         "FFT SHIFT", "GRAIN MIX", "GRAIN SIZE", "GRAIN PITCH",
         "GRAIN JITTER", "FEEDBACK", "FEEDBACK TONE", "FEEDBACK DRIVE",
         "PITCH CHAOS", "TIMELINE MIX", "STEP 1", "STEP 2", "STEP 3",
-        "STEP 4", "STEP 5", "STEP 6", "STEP 7", "STEP 8"
+        "STEP 4", "STEP 5", "STEP 6", "STEP 7", "STEP 8",
+        "FFT SPREAD", "FFT THRESHOLD", "FFT WARP",
+        "GRAIN DENSITY", "GRAIN POSITION", "GRAIN SPRAY",
+        "GRAIN REVERSE", "GRAIN PAN", "FEEDBACK TIME",
+        "FEEDBACK DIFFUSION", "FEEDBACK FREEZE", "FEEDBACK SPREAD",
+        "FEEDBACK PITCH", "PITCH DAMAGE", "PITCH RANGE", "PITCH DRIFT",
+        "REACTIVE AMOUNT", "REACTIVE TRANSIENT", "REACTIVE SPECTRAL",
+        "REACTIVE BASS", "REACTIVE HIGH", "MACRO CURVE", "SCENE MORPH"
     };
 
     std::vector<std::unique_ptr<
@@ -348,6 +390,18 @@ private:
     std::unique_ptr<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>
         characterModeAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        fftWindowAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        pitchModeAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        routingTopologyAttachment;
 
     std::array<std::unique_ptr<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>, 8>
