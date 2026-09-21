@@ -102,6 +102,10 @@ ShakalizerAudioProcessor::createParameterLayout()
     addFloat("clip", "Clip", 0, 1, 0.001f, 0.20f);
     addFloat("glitch", "Glitch", 0, 1, 0.001f, 0.08f);
     addFloat("jitter", "Jitter", 0, 1, 0.001f, 0.08f);
+    addFloat("glitchDensity", "Glitch Density", 0, 1, 0.001f, 0.32f);
+    addFloat("glitchProbability", "Glitch Probability", 0, 1, 0.001f, 0.42f);
+    addFloat("glitchFade", "Glitch Fade", 0, 1, 0.001f, 0.56f);
+    addFloat("glitchVariation", "Glitch Variation", 0, 1, 0.001f, 0.28f);
 
     addFloat("split", "Split", 0, 1, 0.001f, 0.56f);
     addFloat("transient", "Transient", 0, 1, 0.001f, 0.74f);
@@ -128,6 +132,11 @@ ShakalizerAudioProcessor::createParameterLayout()
     addFloat("bandMid", "Mid Shatter", 0, 1, 0.001f, 0.52f);
     addFloat("bandHigh", "High Shatter", 0, 1, 0.001f, 0.68f);
     addFloat("bandAir", "Air Shatter", 0, 1, 0.001f, 0.42f);
+    addFloat("spectralMix", "Spectral Mix", 0, 1, 0.001f, 0.72f);
+    addFloat("spectralSmear", "Spectral Smear", 0, 1, 0.001f, 0.16f);
+    addFloat("spectralFreezeAmount", "Spectral Freeze", 0, 1, 0.001f, 0.0f);
+    addFloat("spectralBits", "Spectral Bits", 0, 1, 0.001f, 0.08f);
+    addFloat("spectralRing", "Spectral Ring", 0, 1, 0.001f, 0.0f);
     addFloat("character", "Character", 0, 1, 0.001f, 0.52f);
     addFloat("preGain", "Pre Gain", -24, 12, 0.01f, 0.0f);
     addFloat("smooth", "Smooth", 0, 1, 0.001f, 0.34f);
@@ -140,6 +149,9 @@ ShakalizerAudioProcessor::createParameterLayout()
             -1.0f, 1.0f, 0.001f, 0.0f);
 
     addFloat("morph", "Morph", 0, 1, 0.001f, 0.0f);
+    addFloat("modRate", "Mod Rate", 0.05f, 20.0f, 0.01f, 1.25f);
+    addFloat("modDepth", "Mod Depth", 0, 1, 0.001f, 0.70f);
+    addFloat("modSmooth", "Mod Smooth", 0, 1, 0.001f, 0.54f);
 
     p.push_back(
         std::make_unique<
