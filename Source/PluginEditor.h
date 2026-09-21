@@ -47,7 +47,7 @@ private:
         float level = 0.0f;
     };
 
-    static constexpr int sliderCount = 48;
+    static constexpr int sliderCount = 52;
 
     void configureSlider(juce::Slider&, const juce::String&,
                          double min, double max, double step);
@@ -182,6 +182,11 @@ private:
     juce::Slider modDepthSlider;
     juce::Slider modSmoothSlider;
 
+    juce::Slider smartAmountSlider;
+    juce::Slider smartBassProtectSlider;
+    juce::Slider smartTransientProtectSlider;
+    juce::Slider smartHighControlSlider;
+
     std::array<juce::Slider*, sliderCount> sliders {
         &shakalSlider, &destroySlider, &crushSlider, &decimateSlider,
         &driveSlider, &clipSlider, &glitchSlider, &jitterSlider,
@@ -199,7 +204,9 @@ private:
         &spectralMixSlider, &spectralSmearSlider,
         &spectralFreezeAmountSlider, &spectralBitsSlider,
         &spectralRingSlider,
-        &modRateSlider, &modDepthSlider, &modSmoothSlider
+        &modRateSlider, &modDepthSlider, &modSmoothSlider,
+        &smartAmountSlider, &smartBassProtectSlider,
+        &smartTransientProtectSlider, &smartHighControlSlider
     };
 
     std::array<juce::String, sliderCount> sliderNames {
@@ -215,7 +222,9 @@ private:
         "GLITCH DENSITY", "GLITCH PROB", "GLITCH FADE",
         "GLITCH VAR", "SPECTRAL MIX", "SPECTRAL SMEAR",
         "SPECTRAL FREEZE", "SPECTRAL BITS", "SPECTRAL RING",
-        "MOD RATE", "MOD DEPTH", "MOD SMOOTH"
+        "MOD RATE", "MOD DEPTH", "MOD SMOOTH",
+        "SMART AMOUNT", "SMART BASS", "SMART TRANSIENT",
+        "SMART HIGH"
     };
 
     std::vector<std::unique_ptr<
