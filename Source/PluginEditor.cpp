@@ -357,7 +357,10 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
             "TAPE STUTTER",
             "REVERSE GRID",
             "SPECTRAL FREEZE",
-            "CHAOS LAB"
+            "CHAOS LAB",
+            "FEEDBACK LOOP",
+            "GRANULAR GLITCH",
+            "REACTIVE SHATTER"
         },
         2);
 
@@ -2259,6 +2262,54 @@ void ShakalizerAudioProcessorEditor::loadPreset(
             setChoice(processor, "spectralMode", 5, 6);
             setChoice(processor, "glitchGrid", 3, 4);
             setChoice(processor, "mode", 7, 9);
+            break;
+
+        case 13:
+            setNormalised(processor, "shakal", 0.74f);
+            setNormalised(processor, "destroy", 0.52f);
+            setNormalised(processor, "feedback", 0.72f);
+            setNormalised(processor, "feedbackTime", 0.34f);
+            setNormalised(processor, "feedbackTone", 0.64f);
+            setNormalised(processor, "feedbackDrive", 0.42f);
+            setNormalised(processor, "feedbackDiffusion", 0.26f);
+            setNormalised(processor, "feedbackSpread", 0.62f);
+            setNormalised(processor, "shatter", 0.28f);
+            setChoice(processor, "routingTopology", 4, 6);
+            setChoice(processor, "characterMode", 9, 10);
+            break;
+
+        case 14:
+            setNormalised(processor, "shakal", 0.68f);
+            setNormalised(processor, "destroy", 0.44f);
+            setNormalised(processor, "grainMix", 0.72f);
+            setNormalised(processor, "grainSize", 0.22f);
+            setNormalised(processor, "grainDensity", 0.64f);
+            setNormalised(processor, "grainSpray", 0.34f);
+            setNormalised(processor, "grainJitter", 0.28f);
+            setNormalised(processor, "grainReverse", 0.38f);
+            setNormalised(processor, "pitchDamage", 0.34f);
+            setNormalised(processor, "pitchRange", 0.48f);
+            setChoice(processor, "pitchMode", 3, 4);
+            setNormalised(processor, "glitch", 0.38f);
+            setChoice(processor, "glitchMode", 2, 7);
+            break;
+
+        case 15:
+            setNormalised(processor, "shakal", 0.62f);
+            setNormalised(processor, "destroy", 0.48f);
+            setNormalised(processor, "reactiveAmount", 0.82f);
+            setNormalised(processor, "reactiveTransient", 0.76f);
+            setNormalised(processor, "reactiveSpectral", 0.68f);
+            setNormalised(processor, "reactiveBass", 0.34f);
+            setNormalised(processor, "reactiveHigh", 0.72f);
+            setNormalised(processor, "fftMix", 0.56f);
+            setNormalised(processor, "fftShatter", 0.48f);
+            setNormalised(processor, "fftSpread", 0.42f);
+            setNormalised(processor, "fftWarp", 0.18f);
+            setNormalised(processor, "glitch", 0.34f);
+            setNormalised(processor, "timelineMix", 0.66f);
+            setChoice(processor, "routingTopology", 3, 6);
+            setBool(processor, "smart", true);
             break;
 
         default:
