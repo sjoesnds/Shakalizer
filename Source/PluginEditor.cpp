@@ -353,7 +353,11 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
             "GLITCH GRID",
             "ALIEN",
             "MELT",
-            "HARD SHATTER"
+            "HARD SHATTER",
+            "TAPE STUTTER",
+            "REVERSE GRID",
+            "SPECTRAL FREEZE",
+            "CHAOS LAB"
         },
         2);
 
@@ -372,6 +376,13 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         { "Free", "1/4", "1/8", "1/16", "1/32" }, 1);
     glitchGridBox.addItemList(
         { "Free", "1/8", "1/16", "1/32" }, 1);
+    glitchModeBox.addItemList(
+        { "Freeze", "Stutter", "Repeat", "Tape Stop",
+          "Gate", "Reverse", "Beat Chop" }, 1);
+    glitchLengthBox.addItemList(
+        { "1/64", "1/32", "1/16", "1/8", "1/4", "1/2" }, 1);
+    spectralModeBox.addItemList(
+        { "Smooth", "Shatter", "Blur", "Freeze", "Bits", "Ring" }, 1);
     routingBox.addItemList(
         { "Standard", "Damage > Shatter",
           "Shatter > Damage", "Parallel" }, 1);
@@ -384,7 +395,8 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
     for (auto* box : {
         &presetBox, &modeBox, &resampleBox, &filterBox,
         &movementBox, &qualityBox, &syncBox,
-        &glitchGridBox, &routingBox, &msModeBox,
+        &glitchGridBox, &glitchModeBox, &glitchLengthBox,
+        &spectralModeBox, &routingBox, &msModeBox,
         &liveSceneBox })
     {
         addAndMakeVisible(*box);
@@ -424,6 +436,21 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         std::make_unique<
             juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
                 processor.getAPVTS(), "glitchGrid", glitchGridBox);
+
+    glitchModeAttachment =
+        std::make_unique<
+            juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+                processor.getAPVTS(), "glitchMode", glitchModeBox);
+
+    glitchLengthAttachment =
+        std::make_unique<
+            juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+                processor.getAPVTS(), "glitchLength", glitchLengthBox);
+
+    spectralModeAttachment =
+        std::make_unique<
+            juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+                processor.getAPVTS(), "spectralMode", spectralModeBox);
 
     routingAttachment =
         std::make_unique<
@@ -531,6 +558,16 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         randomizeAll();
     };
 
+    savePresetButton.onClick = [this]
+    {
+        savePresetToFile();
+    };
+
+    loadPresetButton.onClick = [this]
+    {
+        loadPresetFromFile();
+    };
+
     randomCoreButton.onClick = [this]
     {
         randomizeScope(1);
@@ -552,6 +589,8 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         &autoMatchButton,
         &smartButton,
         &randomAllButton,
+        &savePresetButton,
+        &loadPresetButton,
         &randomCoreButton,
         &randomShatterButton,
         &randomGlitchButton
@@ -782,6 +821,80 @@ void ShakalizerAudioProcessorEditor::paint(
         205.0f,
         205.0f);
 
+    if (getHeight() > 850)
+    {
+        const auto scope =
+            juce::Rectangle<float>(
+                43.0f,
+                static_cast<float>(
+                    getHeight() - 178),
+                218.0f,
+                142.0f);
+
+        g.setColour(
+            juce::Colour::fromRGB(
+                11, 10, 14));
+        g.fillRoundedRectangle(
+            scope,
+            9.0f);
+
+        g.setColour(
+            accent.withAlpha(0.22f));
+        g.drawRoundedRectangle(
+            scope.reduced(0.5f),
+            9.0f,
+            1.0f);
+
+        juce::Path wave;
+        const int count = 256;
+        const float centreY =
+            scope.getCentreY();
+        const float halfH =
+            scope.getHeight() * 0.38f;
+
+        for (int i = 0; i < count; ++i)
+        {
+            const float value =
+                processor.getScopeSample(i);
+            const float x =
+                scope.getX()
+                + static_cast<float>(i)
+                  / static_cast<float>(count - 1)
+                  * scope.getWidth();
+            const float y =
+                centreY - value * halfH;
+
+            if (i == 0)
+                wave.startNewSubPath(x, y);
+            else
+                wave.lineTo(x, y);
+        }
+
+        g.setColour(
+            accent.withAlpha(0.82f));
+        g.strokePath(
+            wave,
+            juce::PathStrokeType(
+                1.15f,
+                juce::PathStrokeType::curved,
+                juce::PathStrokeType::rounded));
+
+        g.setColour(muted);
+        g.setFont(
+            juce::Font(
+                juce::FontOptions(
+                    8.0f,
+                    juce::Font::bold)));
+        g.drawText(
+            "LIVE SCOPE",
+            scope.getX() + 8.0f,
+            scope.getY() + 6.0f,
+            90.0f,
+            14.0f,
+            juce::Justification::left,
+            false);
+    }
+
     g.setColour(line);
 
     for (int y : {
@@ -927,6 +1040,24 @@ void ShakalizerAudioProcessorEditor::resized()
         95,
         31);
 
+    glitchModeBox.setBounds(
+        920,
+        56,
+        102,
+        26);
+
+    glitchLengthBox.setBounds(
+        1028,
+        56,
+        78,
+        26);
+
+    spectralModeBox.setBounds(
+        1112,
+        56,
+        108,
+        26);
+
     saveAButton.setBounds(
         312,
         56,
@@ -974,6 +1105,18 @@ void ShakalizerAudioProcessorEditor::resized()
         56,
         103,
         26);
+
+    savePresetButton.setBounds(
+        926,
+        87,
+        58,
+        23);
+
+    loadPresetButton.setBounds(
+        990,
+        87,
+        58,
+        23);
 
     meterLabel.setBounds(
         1431,
@@ -1110,6 +1253,62 @@ void ShakalizerAudioProcessorEditor::timerCallback()
     smartButton.setToggleState(
         smartOn,
         juce::dontSendNotification);
+
+    repaint();
+}
+
+
+void ShakalizerAudioProcessorEditor::savePresetToFile()
+{
+    juce::FileChooser chooser(
+        "Save Shakalizer Preset",
+        juce::File(),
+        "*.shakal");
+
+    if (!chooser.browseForFileToSave(true,
+                                     "ShakalizerPreset.shakal",
+                                     nullptr))
+        return;
+
+    const auto file = chooser.getResult();
+
+    if (auto xml =
+            processor.getAPVTS()
+                .copyState()
+                .createXml())
+    {
+        file.replaceWithText(
+            xml->toString(
+                juce::XmlElement::TextFormat().withoutHeader()));
+    }
+}
+
+void ShakalizerAudioProcessorEditor::loadPresetFromFile()
+{
+    juce::FileChooser chooser(
+        "Load Shakalizer Preset",
+        juce::File(),
+        "*.shakal");
+
+    if (!chooser.browseForFileToOpen())
+        return;
+
+    const auto file = chooser.getResult();
+
+    if (auto xml = juce::parseXML(file))
+    {
+        if (xml->hasTagName(
+                processor.getAPVTS()
+                    .state.getType()))
+        {
+            processor.getAPVTS().replaceState(
+                juce::ValueTree::fromXml(*xml));
+
+            presetBox.setSelectedId(
+                1,
+                juce::dontSendNotification);
+        }
+    }
 }
 
 void ShakalizerAudioProcessorEditor::saveA()
@@ -1531,6 +1730,59 @@ void ShakalizerAudioProcessorEditor::loadPreset(
             setNormalised(processor, "fold", 0.22f);
             setNormalised(processor, "smooth", 0.34f);
             setChoice(processor, "mode", 8, 9);
+            setChoice(processor, "spectralMode", 1, 6);
+            break;
+
+        case 9:
+            setNormalised(processor, "shakal", 0.62f);
+            setNormalised(processor, "glitch", 0.72f);
+            setNormalised(processor, "jitter", 0.24f);
+            setNormalised(processor, "movement", 0.38f);
+            setNormalised(processor, "smooth", 0.52f);
+            setChoice(processor, "glitchMode", 1, 7);
+            setChoice(processor, "glitchLength", 2, 6);
+            setChoice(processor, "glitchGrid", 2, 4);
+            break;
+
+        case 10:
+            setNormalised(processor, "shakal", 0.70f);
+            setNormalised(processor, "destroy", 0.54f);
+            setNormalised(processor, "glitch", 0.64f);
+            setNormalised(processor, "shatter", 0.44f);
+            setChoice(processor, "glitchMode", 5, 7);
+            setChoice(processor, "glitchLength", 3, 6);
+            setChoice(processor, "glitchGrid", 1, 4);
+            setChoice(processor, "spectralMode", 1, 6);
+            break;
+
+        case 11:
+            setNormalised(processor, "shakal", 0.58f);
+            setNormalised(processor, "destroy", 0.34f);
+            setNormalised(processor, "shatter", 0.66f);
+            setNormalised(processor, "bandMid", 0.76f);
+            setNormalised(processor, "bandHigh", 0.44f);
+            setNormalised(processor, "bandAir", 0.20f);
+            setNormalised(processor, "smooth", 0.62f);
+            setChoice(processor, "spectralMode", 3, 6);
+            setChoice(processor, "glitchMode", 0, 7);
+            setChoice(processor, "glitchLength", 2, 6);
+            break;
+
+        case 12:
+            setNormalised(processor, "shakal", 0.86f);
+            setNormalised(processor, "destroy", 0.76f);
+            setNormalised(processor, "crush", 0.62f);
+            setNormalised(processor, "glitch", 0.56f);
+            setNormalised(processor, "jitter", 0.44f);
+            setNormalised(processor, "unstable", 0.26f);
+            setNormalised(processor, "shatter", 0.72f);
+            setNormalised(processor, "fold", 0.32f);
+            setNormalised(processor, "smooth", 0.30f);
+            setChoice(processor, "glitchMode", 6, 7);
+            setChoice(processor, "glitchLength", 1, 6);
+            setChoice(processor, "spectralMode", 5, 6);
+            setChoice(processor, "glitchGrid", 3, 4);
+            setChoice(processor, "mode", 7, 9);
             break;
 
         default:
