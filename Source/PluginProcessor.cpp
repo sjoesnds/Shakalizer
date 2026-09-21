@@ -203,6 +203,13 @@ void ShakalizerAudioProcessor::prepareToPlay(
     oversampler4x.initProcessing(
         static_cast<size_t>(maxBlockSize));
 
+    dryBuffer.setSize(
+        2,
+        maxBlockSize,
+        false,
+        false,
+        true);
+
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = currentSampleRate;
     spec.maximumBlockSize =
@@ -448,6 +455,17 @@ void ShakalizerAudioProcessor::processBlock(
 
     if (channels == 0 || samples == 0)
         return;
+
+    for (int ch = 0; ch < channels; ++ch)
+    {
+        dryBuffer.copyFrom(
+            ch,
+            0,
+            buffer,
+            ch,
+            0,
+            samples);
+    }
 
     auto value = [this](const char* id)
     {
@@ -896,7 +914,7 @@ void ShakalizerAudioProcessor::processBlock(
                 static_cast<size_t>(ch);
 
             const float dry =
-                buffer.getSample(ch, sample);
+                dryBuffer.getSample(ch, sample);
 
             inputEnergy += dry * dry;
 
