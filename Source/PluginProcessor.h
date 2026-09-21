@@ -125,6 +125,7 @@ private:
     int grainWriteIndex = 0;
     std::array<float, 2> feedbackState { 0.0f, 0.0f };
     std::array<float, 2> feedbackToneState { 0.0f, 0.0f };
+    std::array<std::array<float, 8192>, 2> feedbackBuffer {};
     int feedbackWriteIndex = 0;
 
     float autoMatchGain = 1.0f;
