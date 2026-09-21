@@ -78,3 +78,11 @@ The v2.0 engine adds a dedicated glitch event system with Stutter, Repeat, Tape 
 The spectral section now has six band-spectral behaviors: Smooth, Shatter, Blur, Freeze, Bits and Ring. Four-band processing stays lightweight for real-time use.
 
 The editor now includes a live output scope, `.shakal` preset save/load, expanded glitch and spectral selectors, and additional factory presets.
+
+
+### 2.1 Lab expansion
+
+- **Glitch Lab:** density, probability, fade, variation, multiple event modes, tempo-aware lengths and grid triggering.
+- **Spectral Lab:** dedicated spectral mix, smear, freeze, bit reduction and ring controls layered over the four-band shatter engine.
+- **Modulation Lab:** independent modulation rate, depth, smoothing, waveform and tempo-sync controls, plus a dedicated MOD randomizer.
+- **Editor:** all new controls are exposed in the UI and included in host state/preset serialization.
