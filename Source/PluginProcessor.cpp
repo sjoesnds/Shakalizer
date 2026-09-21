@@ -845,16 +845,6 @@ void ShakalizerAudioProcessor::processBlock(
     }
 
     // Four-slot modulation matrix.
-    float modToShakal = 0.0f;
-    float modToDestroy = 0.0f;
-    float modToCrush = 0.0f;
-    float modToDecimate = 0.0f;
-    float modToShatter = 0.0f;
-    float modToFold = 0.0f;
-    float modToShift = 0.0f;
-    float modToGlitch = 0.0f;
-    float modToFilter = 0.0f;
-
     const float modAmounts[4] {
         value("mod1Amount"),
         value("mod2Amount"),
