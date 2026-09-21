@@ -86,3 +86,11 @@ The editor now includes a live output scope, `.shakal` preset save/load, expande
 - **Spectral Lab:** dedicated spectral mix, smear, freeze, bit reduction and ring controls layered over the four-band shatter engine.
 - **Modulation Lab:** independent modulation rate, depth, smoothing, waveform and tempo-sync controls, plus a dedicated MOD randomizer.
 - **Editor:** all new controls are exposed in the UI and included in host state/preset serialization.
+
+
+### 2.2 — Smart / Visual / Performance Lab
+
+- **Smart Destruction:** adaptive intensity with independent bass, transient and high-frequency protection controls.
+- **Visual Lab:** live waveform scope plus LOW / MID / HIGH / AIR peak telemetry.
+- **Performance Lab:** realtime CPU-load telemetry and final finite-sample output protection against NaN/Inf propagation.
+- **Preset Lab:** user `.shakal` save/load, factory FAV markers, A/B state swapping and scoped randomization.
