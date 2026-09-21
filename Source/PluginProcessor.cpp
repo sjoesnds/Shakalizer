@@ -483,9 +483,9 @@ void ShakalizerAudioProcessor::processBlock(
 
     if (syncRate > 0)
     {
-        if (auto* playHead = getPlayHead())
+        if (auto* currentPlayHead = getPlayHead())
         {
-            if (auto position = playHead->getPosition())
+            if (auto position = currentPlayHead->getPosition())
             {
                 if (auto hostBpm = position->getBpm())
                     bpm = *hostBpm;
@@ -742,13 +742,13 @@ void ShakalizerAudioProcessor::processBlock(
                 clamp01(baseShatter * bandAir);
 
             auto destroyBand =
-                [this, localCrush = crushBase, decimateBase,
+                [this, baseCrush = crushBase, decimateBase,
                  fold, character, resampled, baseLevels]
                 (float band, float amount)
             {
                 const float localCrush =
                     clamp01(
-                        localCrush
+                        baseCrush
                         * juce::jmap(amount, 0.55f, 1.25f));
 
                 const int bits =
