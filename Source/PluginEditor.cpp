@@ -638,7 +638,13 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         "bandLow", "bandMid", "bandHigh", "bandAir",
         "character", "preGain", "smooth",
         "mod1Amount", "mod2Amount", "mod3Amount",
-        "mod4Amount", "morph"
+        "mod4Amount", "morph",
+        "glitchDensity", "glitchProbability",
+        "glitchFade", "glitchVariation",
+        "spectralMix", "spectralSmear",
+        "spectralFreezeAmount", "spectralBits",
+        "spectralRing",
+        "modRate", "modDepth", "modSmooth"
     }};
 
     for (int i = 0;
@@ -678,6 +684,12 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
             min = -1.0;
             max = 1.0;
             step = 0.001;
+        }
+        else if (i == 45)
+        {
+            min = 0.05;
+            max = 20.0;
+            step = 0.01;
         }
 
         configureSlider(
@@ -1146,7 +1158,7 @@ void ShakalizerAudioProcessorEditor::resized()
         w - left - 35;
 
     const int cols = 7;
-    const int rows = 5;
+    const int rows = 7;
     const int gap = 4;
 
     const int cellW =
@@ -1582,10 +1594,19 @@ void ShakalizerAudioProcessorEditor::loadPreset(
                 0.5f);
         }
 
-        setNormalised(
-            processor,
-            "morph",
-            0.0f);
+        setNormalised(processor, "morph", 0.0f);
+        setNormalised(processor, "glitchDensity", 0.32f);
+        setNormalised(processor, "glitchProbability", 0.42f);
+        setNormalised(processor, "glitchFade", 0.56f);
+        setNormalised(processor, "glitchVariation", 0.28f);
+        setNormalised(processor, "spectralMix", 0.72f);
+        setNormalised(processor, "spectralSmear", 0.16f);
+        setNormalised(processor, "spectralFreezeAmount", 0.0f);
+        setNormalised(processor, "spectralBits", 0.08f);
+        setNormalised(processor, "spectralRing", 0.0f);
+        setNormalised(processor, "modRate", 1.25f / 20.0f);
+        setNormalised(processor, "modDepth", 0.70f);
+        setNormalised(processor, "modSmooth", 0.54f);
 
         setChoice(
             processor, "mode", 2, 9);
