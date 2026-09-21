@@ -1291,7 +1291,6 @@ void ShakalizerAudioProcessorEditor::savePresetToFile()
                         xml->toString());
             }
 
-            presetFileChooser.reset();
         },
         this);
 }
@@ -1330,7 +1329,6 @@ void ShakalizerAudioProcessorEditor::loadPresetFromFile()
                 }
             }
 
-            presetFileChooser.reset();
         },
         this);
 }
