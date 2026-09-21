@@ -193,3 +193,9 @@ void ShakalizerAudioProcessor::setStateInformation(const void* data, int sizeInB
         if (xml->hasTagName(apvts.state.getType()))
             apvts.replaceState(juce::ValueTree::fromXml(*xml));
 }
+
+// JUCE's plugin entry point. This symbol is required by the VST3 wrapper.
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+{
+    return new ShakalizerAudioProcessor();
+}
