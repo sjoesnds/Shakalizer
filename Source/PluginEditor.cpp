@@ -1423,14 +1423,14 @@ void ShakalizerAudioProcessorEditor::resized()
     }
 
     // The modulation controls are placed over the left-lower panel.
-    const int modY = 408;
+    const int modY = 390;
 
     for (int i = 0;
          i < 8;
          ++i)
     {
         const int y =
-            modY + i * 69;
+            modY + i * 57;
 
         modSourceBoxes[
             static_cast<size_t>(i)]
@@ -1453,9 +1453,9 @@ void ShakalizerAudioProcessorEditor::resized()
                 31 + i)]
             ->setBounds(
                 45,
-                y + 30,
+                y + 28,
                 198,
-                37);
+                30);
     }
 
     meter.setBounds(
