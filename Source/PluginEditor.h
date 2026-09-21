@@ -88,6 +88,8 @@ private:
     juce::ComboBox glitchModeBox;
     juce::ComboBox glitchLengthBox;
     juce::ComboBox spectralModeBox;
+    juce::ComboBox modWaveBox;
+    juce::ComboBox modSyncBox;
     juce::ComboBox routingBox;
     juce::ComboBox msModeBox;
     juce::ComboBox liveSceneBox;
@@ -258,6 +260,14 @@ private:
     std::unique_ptr<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>
         spectralModeAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        modWaveAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        modSyncAttachment;
 
     std::unique_ptr<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>
