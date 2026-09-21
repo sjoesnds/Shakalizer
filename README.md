@@ -1,82 +1,71 @@
-# Shakalizer v0.4
+# Shakalizer v1.0
 
-Shakalizer is a VST3 sound-destruction effect for FL Studio. v0.4 is focused on controlled destruction, musical randomisation and a softer high-frequency response.
+Shakalizer is a VST3 digital-destruction effect built around controlled digital damage instead of generic harsh distortion.
 
-## Core engine
+## Engine
 
-- SHAKAL macro with multi-stage macro mapping
+### Core
+- SHAKAL macro
 - DESTROY / CRUSH / DECIMATE
-- oversampled DRIVE / CLIP
-- sparse GLITCH with grid timing
-- JITTER / UNSTABLE movement
-- TRANSIENT / BODY envelope-aware processing
-- frequency SPLIT with low-end protection
-- restrained STEREO widening
-- post filter: LP / BP / HP
-- Auto Match and full-state A/B
+- DRIVE / CLIP
+- GLITCH / JITTER / UNSTABLE
+- TRANSIENT / BODY processing
+- low-end protection
+- stereo widening
+- post filtering
+- Auto Match
+- 1x / 2x / 4x nonlinear quality
 
-## Shatter engine
-
-- SPECTRAL SHATTER
-- separate LOW / MID / HIGH / AIR amounts
+### Shatter
+- six-way spectral processing concept
+- LOW / MID / HIGH / AIR control
 - WAVE FOLD
 - SHIFT
-- RESONATOR / comb feedback
+- RESONATOR
 - ENVELOPE FOLLOW
 - CHARACTER
-- final SMOOTH / safety stage
+- SMOOTH safety control
 
-## Quality
+### Routing
+- Standard
+- Damage > Shatter
+- Shatter > Damage
+- Parallel
 
-1x, 2x and 4x nonlinear oversampling.
+### Modulation Matrix
+Four modulation slots.
 
-v0.4 also uses a separate dry buffer so MIX is a real dry/wet control and Auto Match compares against the untouched input.
+Sources: LFO, Envelope, Random, Step, Beat.
 
-## Modes
+Destinations: Shakal, Destroy, Crush, Decimate, Shatter, Fold, Shift, Glitch, Filter.
 
-Clean, Crunch, Shakal, Destroy, Fried, Pixel, Alien, Melt and Shatter.
+### Performance
+- host BPM sync
+- glitch grid
+- M/S processing modes
+- Live Scenes
+- Morph
+- Smart adaptive processing
 
-## Movement / sync
+## Randomization
 
-- Sine / Triangle / Sample+Hold / Stepped
-- Free / 1/4 / 1/8 / 1/16 / 1/32 movement sync
-- Free / 1/8 / 1/16 / 1/32 glitch grid
+RANDOM ALL randomizes the complete processor parameter list, including all continuous controls, modes, routing, M/S, Live Scene, modulation sources/destinations/amounts, quality, sync, glitch grid, Auto Match and Smart.
+
+Scoped randomizers are also available for Core, Shatter and Glitch.
 
 ## Presets
 
-Built-in starting points:
+Factory starting points: INIT / SAFE, VOCAL DIGITAL, SHAKAL LEAD, BROKEN 808, PIXEL DRUM, GLITCH GRID, ALIEN, MELT, HARD SHATTER.
 
-- INIT / SAFE
-- VOCAL DIGITAL
-- SHAKAL LEAD
-- BROKEN 808
-- PIXEL DRUM
-- GLITCH GRID
-- ALIEN
-- MELT
-- HARD SHATTER
+A/B snapshots capture the complete parameter state.
 
-## Randomisation
+## Safety / character
 
-RANDOM ALL is global: it iterates over the processor's complete parameter list and randomises every continuous parameter, every choice selector and Auto Match.
-
-Scoped randomisers:
-
-- CORE
-- SHATTER
-- GLITCH
-
-After manual randomisation the preset selector shows CUSTOM.
-
-## Safety
-
-The main nonlinear stage was softened in v0.4. High-frequency destruction is reduced by default, transients are protected dynamically and a final low-pass/soft-ceiling stage prevents extreme edge harshness.
+The engine intentionally protects transients and the low end and applies a final softened safety stage. The goal is destructive character with a controllable top end.
 
 ## Build
-
-Windows:
 
     cmake -S . -B build-shakalizer
     cmake --build build-shakalizer --config Release --parallel
 
-GitHub Actions builds and uploads a Windows VST3 artifact for source/CMake/workflow changes.
+GitHub Actions packages a Windows VST3 artifact as Shakalizer-VST3-Windows.
