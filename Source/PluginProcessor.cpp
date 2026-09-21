@@ -156,6 +156,28 @@ ShakalizerAudioProcessor::createParameterLayout()
     p.push_back(
         std::make_unique<
             juce::AudioParameterChoice>(
+                "modWave",
+                "Mod Wave",
+                juce::StringArray {
+                    "Sine", "Triangle",
+                    "Sample+Hold", "Stepped"
+                },
+                0));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "modSync",
+                "Mod Sync",
+                juce::StringArray {
+                    "Free", "1/4", "1/8",
+                    "1/16", "1/32"
+                },
+                0));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
                 "mode",
                 "Mode",
                 juce::StringArray {
@@ -431,6 +453,8 @@ void ShakalizerAudioProcessor::prepareToPlay(
     spectralFreeze.fill(0.0f);
     modSmoothState.fill(0.0f);
     modPhase = 0.0f;
+    modHoldValue = 0.0f;
+    modHoldCounter = 0;
 
     for (auto& sample : scopeBuffer)
         sample.store(0.0f);
@@ -774,6 +798,18 @@ void ShakalizerAudioProcessor::processBlock(
     const float modSmooth =
         clamp01(value("modSmooth"));
 
+    const int modWave =
+        choiceIndex(
+            apvts,
+            "modWave",
+            0);
+
+    const int modSync =
+        choiceIndex(
+            apvts,
+            "modSync",
+            0);
+
     const bool autoMatch =
         value("autoMatch") > 0.5f;
     const bool smart =
@@ -1034,8 +1070,26 @@ void ShakalizerAudioProcessor::processBlock(
         / static_cast<float>(
             currentSampleRate);
 
+    float modRateHz = modRate;
+
+    if (modSync > 0)
+    {
+        const float modMultipliers[] {
+            1.0f, 2.0f, 4.0f, 8.0f
+        };
+
+        modRateHz =
+            static_cast<float>(
+                bpm / 60.0)
+            * modMultipliers[
+                juce::jlimit(
+                    0,
+                    3,
+                    modSync - 1)];
+    }
+
     const float modIncrement =
-        2.0f * pi * modRate
+        2.0f * pi * modRateHz
         / static_cast<float>(
             currentSampleRate);
 
@@ -1231,6 +1285,19 @@ void ShakalizerAudioProcessor::processBlock(
             }
         }
 
+        if (modWave == 2
+            && --modHoldCounter <= 0)
+        {
+            modHoldCounter =
+                2 + static_cast<int>(
+                    nextRandom() * 24.0f);
+
+            modHoldValue =
+                nextRandom()
+                * 2.0f
+                - 1.0f;
+        }
+
         if (unstable > 0.001f
             && --unstableRemaining <= 0)
         {
@@ -1320,10 +1387,50 @@ void ShakalizerAudioProcessor::processBlock(
                 switch (modSources[slot])
                 {
                     case 1:
+                    {
+                        float lfo =
+                            std::sin(modPhase);
+
+                        if (modWave == 1)
+                        {
+                            const float wrapped =
+                                modPhase
+                                / (2.0f * pi)
+                                - std::floor(
+                                    modPhase
+                                    / (2.0f * pi));
+
+                            const float tri =
+                                wrapped < 0.5f
+                                    ? wrapped * 4.0f - 1.0f
+                                    : 3.0f
+                                      - wrapped * 4.0f;
+
+                            lfo = tri;
+                        }
+                        else if (modWave == 2)
+                        {
+                            lfo = modHoldValue;
+                        }
+                        else if (modWave == 3)
+                        {
+                            const float wrapped =
+                                modPhase
+                                / (2.0f * pi)
+                                - std::floor(
+                                    modPhase
+                                    / (2.0f * pi));
+
+                            lfo =
+                                wrapped < 0.5f
+                                    ? 1.0f
+                                    : -1.0f;
+                        }
+
                         source =
-                            bipolarToUnit(
-                                std::sin(modPhase));
+                            bipolarToUnit(lfo);
                         break;
+                    }
 
                     case 2:
                         source =
