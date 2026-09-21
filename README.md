@@ -69,3 +69,12 @@ The engine intentionally protects transients and the low end and applies a final
     cmake --build build-shakalizer --config Release --parallel
 
 GitHub Actions packages a Windows VST3 artifact as Shakalizer-VST3-Windows.
+
+
+## v2.0 — Destruction Engine
+
+The v2.0 engine adds a dedicated glitch event system with Stutter, Repeat, Tape Stop, Gate, Reverse and Beat Chop modes, tempo-aware micro-loop lengths, and grid-triggered events.
+
+The spectral section now has six band-spectral behaviors: Smooth, Shatter, Blur, Freeze, Bits and Ring. Four-band processing stays lightweight for real-time use.
+
+The editor now includes a live output scope, `.shakal` preset save/load, expanded glitch and spectral selectors, and additional factory presets.
