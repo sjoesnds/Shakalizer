@@ -429,6 +429,8 @@ void ShakalizerAudioProcessor::prepareToPlay(
     glitchWriteIndex = 0;
 
     spectralFreeze.fill(0.0f);
+    modSmoothState.fill(0.0f);
+    modPhase = 0.0f;
 
     for (auto& sample : scopeBuffer)
         sample.store(0.0f);
@@ -700,6 +702,10 @@ void ShakalizerAudioProcessor::processBlock(
     float clip = clamp01(value("clip"));
     float glitch = clamp01(value("glitch"));
     float jitter = clamp01(value("jitter"));
+    const float glitchDensity = clamp01(value("glitchDensity"));
+    const float glitchProbability = clamp01(value("glitchProbability"));
+    const float glitchFade = clamp01(value("glitchFade"));
+    const float glitchVariation = clamp01(value("glitchVariation"));
 
     const float split =
         clamp01(value("split"));
@@ -743,6 +749,11 @@ void ShakalizerAudioProcessor::processBlock(
         clamp01(value("bandHigh"));
     const float bandAir =
         clamp01(value("bandAir"));
+    const float spectralMix = clamp01(value("spectralMix"));
+    const float spectralSmear = clamp01(value("spectralSmear"));
+    const float spectralFreezeAmount = clamp01(value("spectralFreezeAmount"));
+    const float spectralBits = clamp01(value("spectralBits"));
+    const float spectralRing = clamp01(value("spectralRing"));
     const float character =
         clamp01(value("character"));
     const float preGain =
@@ -755,6 +766,13 @@ void ShakalizerAudioProcessor::processBlock(
 
     float morph =
         clamp01(value("morph"));
+
+    const float modRate =
+        juce::jlimit(0.05f, 20.0f, value("modRate"));
+    const float modDepth =
+        clamp01(value("modDepth"));
+    const float modSmooth =
+        clamp01(value("modSmooth"));
 
     const bool autoMatch =
         value("autoMatch") > 0.5f;
