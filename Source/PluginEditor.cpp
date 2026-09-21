@@ -279,11 +279,17 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
     };
 
     const std::array<double, sliderCount> steps {
+        // 1-6: core
         0.001, 0.001, 0.001, 0.001, 0.001, 0.001,
+        // 7-12: glitch / dynamics
         0.001, 0.001, 0.001, 0.001, 0.001, 0.001,
+        // 13-19: movement / filter / mix / output
         0.001, 0.001, 0.001, 1.0, 0.001, 0.001, 0.01,
-        0.001, 0.001, 0.001, 0.001, 0.001, 0.001,
-        0.001, 0.001, 0.001, 0.001, 0.001, 0.01
+        // 20-29: shatter engine
+        0.001, 0.001, 0.001, 0.001, 0.001,
+        0.001, 0.001, 0.001, 0.001, 0.001,
+        // 30: pre gain
+        0.01
     };
 
     for (int i = 0; i < sliderCount; ++i)
