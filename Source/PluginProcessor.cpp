@@ -152,6 +152,10 @@ ShakalizerAudioProcessor::createParameterLayout()
     addFloat("modRate", "Mod Rate", 0.05f, 20.0f, 0.01f, 1.25f);
     addFloat("modDepth", "Mod Depth", 0, 1, 0.001f, 0.70f);
     addFloat("modSmooth", "Mod Smooth", 0, 1, 0.001f, 0.54f);
+    addFloat("smartAmount", "Smart Amount", 0, 1, 0.001f, 0.72f);
+    addFloat("smartBassProtect", "Smart Bass Protect", 0, 1, 0.001f, 0.76f);
+    addFloat("smartTransientProtect", "Smart Transient Protect", 0, 1, 0.001f, 0.72f);
+    addFloat("smartHighControl", "Smart High Control", 0, 1, 0.001f, 0.68f);
 
     p.push_back(
         std::make_unique<
@@ -797,6 +801,15 @@ void ShakalizerAudioProcessor::processBlock(
         clamp01(value("modDepth"));
     const float modSmooth =
         clamp01(value("modSmooth"));
+
+    const float smartAmount =
+        clamp01(value("smartAmount"));
+    const float smartBassProtect =
+        clamp01(value("smartBassProtect"));
+    const float smartTransientProtect =
+        clamp01(value("smartTransientProtect"));
+    const float smartHighControl =
+        clamp01(value("smartHighControl"));
 
     const int modWave =
         choiceIndex(
@@ -1530,17 +1543,62 @@ void ShakalizerAudioProcessor::processBlock(
                         transientAmount * 0.70f
                         + bodyAmount * 0.30f);
 
+                const float adaptive =
+                    smartAmount
+                    * (0.65f
+                       + inputShape * 0.55f);
+
                 dynamicIntensity =
                     clamp01(
                         dynamicIntensity
-                        * (0.78f
-                           + inputShape * 0.34f));
+                        * juce::jmap(
+                            adaptive,
+                            1.0f,
+                            0.72f));
 
                 localShatter =
                     clamp01(
                         localShatter
-                        * (0.80f
-                           + inputShape * 0.28f));
+                        * juce::jmap(
+                            adaptive,
+                            1.0f,
+                            0.76f));
+
+                localCrush =
+                    clamp01(
+                        localCrush
+                        * juce::jmap(
+                            smartBassProtect,
+                            1.0f,
+                            0.78f));
+
+                if (transientAmount > 0.12f)
+                {
+                    localDestroy =
+                        clamp01(
+                            localDestroy
+                            * juce::jmap(
+                                smartTransientProtect,
+                                1.0f,
+                                0.58f));
+
+                    localGlitch =
+                        clamp01(
+                            localGlitch
+                            * juce::jmap(
+                                smartTransientProtect,
+                                1.0f,
+                                0.62f));
+                }
+
+                localShatter =
+                    clamp01(
+                        localShatter
+                        * juce::jmap(
+                            smartHighControl
+                            * highAmt,
+                            1.0f,
+                            0.82f));
             }
 
             const float envAmount =
