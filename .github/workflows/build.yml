@@ -3,10 +3,14 @@ name: Build Shakalizer
 on:
   push:
     paths:
-      - '**'
+      - 'CMakeLists.txt'
+      - 'Source/**'
+      - '.github/workflows/build.yml'
   pull_request:
     paths:
-      - '**'
+      - 'CMakeLists.txt'
+      - 'Source/**'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 jobs:
