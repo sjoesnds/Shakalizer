@@ -685,6 +685,9 @@ void ShakalizerAudioProcessor::processBlock(
     juce::AudioBuffer<float>& buffer,
     juce::MidiBuffer& midiMessages)
 {
+    const double blockStartMs =
+        juce::Time::getMillisecondCounterHiRes();
+
     juce::ScopedNoDenormals noDenormals;
     juce::ignoreUnused(midiMessages);
 
@@ -2708,6 +2711,15 @@ void ShakalizerAudioProcessor::processBlock(
                     0.26f
                     + smooth * 0.62f);
 
+            if (!std::isfinite(x))
+                x = 0.0f;
+
+            x =
+                juce::jlimit(
+                    -1.25f,
+                    1.25f,
+                    x);
+
             x *= 0.96f;
 
             buffer.setSample(
@@ -2753,6 +2765,34 @@ void ShakalizerAudioProcessor::processBlock(
             0.20f * bandPeak[band]
             + 0.80f * previous);
     }
+
+    const double blockElapsedMs =
+        juce::Time::getMillisecondCounterHiRes()
+        - blockStartMs;
+
+    const double budgetMs =
+        samples > 0
+            ? static_cast<double>(samples)
+              * 1000.0
+              / currentSampleRate
+            : 1.0;
+
+    const float cpuPercent =
+        static_cast<float>(
+            juce::jlimit(
+                0.0,
+                4.0,
+                blockElapsedMs
+                / juce::jmax(
+                    0.05,
+                    budgetMs)));
+
+    const float previousCpu =
+        cpuLoad.load();
+
+    cpuLoad.store(
+        0.12f * cpuPercent
+        + 0.88f * previousCpu);
 
     meterLevel.store(
         juce::jlimit(
