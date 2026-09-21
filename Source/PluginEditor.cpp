@@ -854,8 +854,12 @@ void ShakalizerAudioProcessorEditor::paint(
 
         for (int i = 0; i < count; ++i)
         {
+            const int write =
+                processor.getScopeWriteIndex();
+
             const float value =
-                processor.getScopeSample(i);
+                processor.getScopeSample(
+                    (write + i) & 255);
             const float x =
                 scope.getX()
                 + static_cast<float>(i)
@@ -1464,13 +1468,14 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
         "resonance", "envFollow",
         "bandLow", "bandMid", "bandHigh",
         "bandAir", "character", "morph",
-        "filterFreq"
+        "filterFreq", "spectralMode"
     };
 
     const std::array<
         const char*, 12> glitch {
         "glitch", "jitter", "movement",
         "unstable", "stereo", "alien",
+        "glitchMode", "glitchLength",
         "mod1Amount", "mod2Amount",
         "mod3Amount", "mod4Amount",
         "morph", "mix"
@@ -1578,6 +1583,12 @@ void ShakalizerAudioProcessorEditor::loadPreset(
             processor, "syncRate", 0, 5);
         setChoice(
             processor, "glitchGrid", 0, 4);
+        setChoice(
+            processor, "glitchMode", 1, 7);
+        setChoice(
+            processor, "glitchLength", 2, 6);
+        setChoice(
+            processor, "spectralMode", 1, 6);
         setChoice(
             processor, "routing", 0, 4);
         setChoice(
