@@ -645,6 +645,22 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
     addAndMakeVisible(
         meterLabel);
 
+    cpuLabel.setFont(
+        juce::Font(
+            juce::FontOptions(
+                8.0f,
+                juce::Font::bold)));
+
+    cpuLabel.setColour(
+        juce::Label::textColourId,
+        muted);
+
+    cpuLabel.setJustificationType(
+        juce::Justification::centred);
+
+    addAndMakeVisible(
+        cpuLabel);
+
     addAndMakeVisible(
         meter);
 
@@ -1237,9 +1253,15 @@ void ShakalizerAudioProcessorEditor::resized()
         23);
 
     meterLabel.setBounds(
-        1431,
-        58,
+        1415,
+        52,
         30,
+        12);
+
+    cpuLabel.setBounds(
+        1415,
+        70,
+        44,
         12);
 
     meter.setBounds(
@@ -1370,6 +1392,20 @@ void ShakalizerAudioProcessorEditor::timerCallback()
 
     smartButton.setToggleState(
         smartOn,
+        juce::dontSendNotification);
+
+    const float cpu =
+        juce::jlimit(
+            0.0f,
+            400.0f,
+            processor.getCpuLoad() * 100.0f);
+
+    cpuLabel.setText(
+        "CPU "
+        + juce::String(
+            cpu,
+            1)
+        + "%",
         juce::dontSendNotification);
 
     repaint();
