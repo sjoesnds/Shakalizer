@@ -1,0 +1,37 @@
+name: Build Shakalizer
+
+on:
+  push:
+    paths:
+      - '**'
+  pull_request:
+    paths:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  windows-vst3:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build-shakalizer -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build-shakalizer --config Release --parallel
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $source = "build-shakalizer/Shakalizer_artefacts/Release/VST3"
+          if (-not (Test-Path $source)) { throw "VST3 artefact directory not found: $source" }
+          New-Item -ItemType Directory -Force -Path "dist" | Out-Null
+          Copy-Item -Recurse "$source/*" "dist/"
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shakalizer-VST3-Windows
+          path: dist
