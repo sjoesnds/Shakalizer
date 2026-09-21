@@ -421,6 +421,8 @@ void ShakalizerAudioProcessor::prepareToPlay(
     for (auto& sample : scopeBuffer)
         sample.store(0.0f);
 
+    scopeWriteIndex.store(0);
+
     resonatorBuffer = {};
     resonatorWriteIndex = 0;
 
