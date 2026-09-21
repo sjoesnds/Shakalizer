@@ -84,6 +84,8 @@ private:
     int resonatorWriteIndex = 0;
 
     float movementPhase = 0.0f;
+    float syncPhase = 0.0f;
+    int lastGlitchGridSlot = -1;
     float glitchGridPhase = 0.0f;
     float unstableValue = 0.0f;
     int unstableRemaining = 0;
