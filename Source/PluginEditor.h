@@ -47,7 +47,7 @@ private:
         float level = 0.0f;
     };
 
-    static constexpr int sliderCount = 30;
+    static constexpr int sliderCount = 31;
 
     void configureSlider(juce::Slider&, const juce::String&,
                          double min, double max, double step);
@@ -57,9 +57,12 @@ private:
     void saveA();
     void swapAB();
     void toggleAutoMatch();
-    void randomize();
-    void updateAutoMatchButton();
 
+    void randomizeAll();
+    void randomizeScope(int scope);
+    void loadPreset(int index);
+
+    void updateAutoMatchButton();
     void captureState(std::vector<float>& destination);
     void applyState(const std::vector<float>& state);
 
@@ -69,6 +72,7 @@ private:
     juce::Label titleLabel;
     juce::Label subtitleLabel;
 
+    juce::ComboBox presetBox;
     juce::ComboBox modeBox;
     juce::ComboBox resampleBox;
     juce::ComboBox filterBox;
@@ -79,8 +83,11 @@ private:
 
     juce::TextButton saveAButton { "SAVE A" };
     juce::TextButton abButton { "A / B" };
-    juce::TextButton autoMatchButton { "AUTO MATCH" };
-    juce::TextButton randomButton { "RANDOMIZE ALL" };
+    juce::TextButton autoMatchButton { "AUTO" };
+    juce::TextButton randomAllButton { "RANDOM ALL" };
+    juce::TextButton randomCoreButton { "CORE" };
+    juce::TextButton randomShatterButton { "SHATTER" };
+    juce::TextButton randomGlitchButton { "GLITCH" };
 
     juce::Label meterLabel { {}, "OUT" };
     Meter meter;
@@ -116,38 +123,37 @@ private:
     juce::Slider bandAirSlider;
     juce::Slider characterSlider;
     juce::Slider preGainSlider;
+    juce::Slider smoothSlider;
 
     std::array<juce::Slider*, sliderCount> sliders {
-        &shakalSlider, &destroySlider, &crushSlider, &decimateSlider, &driveSlider,
-        &clipSlider, &glitchSlider, &jitterSlider, &splitSlider, &transientSlider,
-        &bodySlider, &stereoSlider, &movementSlider, &unstableSlider, &alienSlider,
+        &shakalSlider, &destroySlider, &crushSlider, &decimateSlider,
+        &driveSlider, &clipSlider, &glitchSlider, &jitterSlider,
+        &splitSlider, &transientSlider, &bodySlider, &stereoSlider,
+        &movementSlider, &unstableSlider, &alienSlider,
         &filterFreqSlider, &filterResSlider, &mixSlider, &outputSlider,
-        &shatterSlider, &foldSlider, &shiftSlider, &resonanceSlider, &envFollowSlider,
-        &bandLowSlider, &bandMidSlider, &bandHighSlider, &bandAirSlider,
-        &characterSlider, &preGainSlider
+        &shatterSlider, &foldSlider, &shiftSlider, &resonanceSlider,
+        &envFollowSlider, &bandLowSlider, &bandMidSlider, &bandHighSlider,
+        &bandAirSlider, &characterSlider, &preGainSlider, &smoothSlider
     };
 
     std::array<juce::String, sliderCount> sliderNames {
-        "SHAKAL", "DESTROY", "CRUSH", "DECIMATE", "DRIVE", "CLIP",
-        "GLITCH", "JITTER", "SPLIT", "TRANSIENT", "BODY", "STEREO",
-        "MOVEMENT", "UNSTABLE", "ALIEN", "FILTER FREQ", "RESONANCE",
-        "MIX", "OUTPUT", "SHATTER", "FOLD", "SHIFT", "RESONATOR",
-        "ENVELOPE", "LOW SHATTER", "MID SHATTER", "HIGH SHATTER",
-        "AIR SHATTER", "CHARACTER", "PRE GAIN"
+        "SHAKAL", "DESTROY", "CRUSH", "DECIMATE",
+        "DRIVE", "CLIP", "GLITCH", "JITTER",
+        "SPLIT", "TRANSIENT", "BODY", "STEREO",
+        "MOVEMENT", "UNSTABLE", "ALIEN",
+        "FILTER FREQ", "RESONANCE", "MIX", "OUTPUT",
+        "SHATTER", "FOLD", "SHIFT", "RESONATOR",
+        "ENVELOPE", "LOW SHATTER", "MID SHATTER",
+        "HIGH SHATTER", "AIR SHATTER", "CHARACTER",
+        "PRE GAIN", "SMOOTH"
     };
 
-    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> attachments;
+    std::vector<std::unique_ptr<
+        juce::AudioProcessorValueTreeState::SliderAttachment>> attachments;
 
     std::vector<float> abState;
     bool hasAState = false;
 
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> modeAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> resampleAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> filterAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> movementAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> syncAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> glitchGridAttachment;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ShakalizerAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
+        ShakalizerAudioProcessorEditor)
 };
