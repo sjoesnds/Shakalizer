@@ -1278,7 +1278,7 @@ void ShakalizerAudioProcessorEditor::randomizeScope(
     };
 
     const auto randomizeIds =
-        [&random, this](const auto& ids)
+        [this](const auto& ids)
     {
         for (const auto* id : ids)
         {
