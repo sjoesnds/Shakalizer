@@ -336,6 +336,7 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
     addAndMakeVisible(
         subtitleLabel);
 
+    presetBox.addItem("CUSTOM", 1);
     presetBox.addItemList(
         {
             "INIT / SAFE",
@@ -348,7 +349,7 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
             "MELT",
             "HARD SHATTER"
         },
-        1);
+        2);
 
     presetBox.setSelectedId(
         1,
@@ -425,8 +426,8 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         const int index =
             presetBox.getSelectedItemIndex();
 
-        if (index >= 0)
-            loadPreset(index);
+        if (index > 0)
+            loadPreset(index - 1);
     };
 
     saveAButton.onClick = [this]
@@ -1004,7 +1005,7 @@ void ShakalizerAudioProcessorEditor::swapAB()
         std::move(current);
 
     presetBox.setSelectedId(
-        0,
+        1,
         juce::dontSendNotification);
 }
 
@@ -1314,6 +1315,6 @@ void ShakalizerAudioProcessorEditor::loadPreset(
     }
 
     presetBox.setSelectedId(
-        index + 1,
+        index + 2,
         juce::dontSendNotification);
 }
