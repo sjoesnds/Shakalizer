@@ -1,4 +1,4 @@
-# Shakalizer v1.0
+# Shakalizer v2.2
 
 Shakalizer is a VST3 digital-destruction effect built around controlled digital damage instead of generic harsh distortion.
 
