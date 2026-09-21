@@ -221,6 +221,40 @@ ShakalizerAudioProcessor::createParameterLayout()
     p.push_back(
         std::make_unique<
             juce::AudioParameterChoice>(
+                "glitchMode",
+                "Glitch Mode",
+                juce::StringArray {
+                    "Freeze", "Stutter", "Repeat",
+                    "Tape Stop", "Gate", "Reverse",
+                    "Beat Chop"
+                },
+                1));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "glitchLength",
+                "Glitch Length",
+                juce::StringArray {
+                    "1/64", "1/32", "1/16",
+                    "1/8", "1/4", "1/2"
+                },
+                2));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "spectralMode",
+                "Spectral Mode",
+                juce::StringArray {
+                    "Smooth", "Shatter", "Blur",
+                    "Freeze", "Bits", "Ring"
+                },
+                1));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
                 "routing",
                 "Routing",
                 juce::StringArray {
@@ -377,6 +411,15 @@ void ShakalizerAudioProcessor::prepareToPlay(
     glitchValue.fill(0.0f);
     glitchRemaining.fill(0);
     glitchCooldown.fill(0);
+    glitchEventLength.fill(1);
+    glitchEventAge.fill(0);
+    glitchBuffer = {};
+    glitchWriteIndex = 0;
+
+    spectralFreeze.fill(0.0f);
+
+    for (auto& sample : scopeBuffer)
+        sample.store(0.0f);
 
     resonatorBuffer = {};
     resonatorWriteIndex = 0;
@@ -744,6 +787,24 @@ void ShakalizerAudioProcessor::processBlock(
         choiceIndex(
             apvts,
             "glitchGrid",
+            1);
+
+    const int glitchMode =
+        choiceIndex(
+            apvts,
+            "glitchMode",
+            1);
+
+    const int glitchLength =
+        choiceIndex(
+            apvts,
+            "glitchLength",
+            2);
+
+    const int spectralMode =
+        choiceIndex(
+            apvts,
+            "spectralMode",
             1);
 
     const int routing =
@@ -1504,20 +1565,33 @@ void ShakalizerAudioProcessor::processBlock(
             auto destroyBand =
                 [this, localCrush,
                  localDecimate, localFold,
-                 character, resampled]
+                 character, resampled,
+                 spectralMode, index,
+                 movementBipolar]
                 (float band,
                  float amount)
             {
                 if (amount <= 0.0001f)
                     return band;
 
+                float effectiveAmount = amount;
+
+                if (spectralMode == 2)
+                    effectiveAmount *= 0.58f;
+                else if (spectralMode == 3)
+                    effectiveAmount *= 0.82f;
+                else if (spectralMode == 4)
+                    effectiveAmount = juce::jmin(
+                        1.0f,
+                        amount * 1.18f);
+
                 const float crushAmount =
                     clamp01(
                         localCrush
-                        * (0.42f
-                           + amount * 0.78f));
+                        * (0.38f
+                           + effectiveAmount * 0.82f));
 
-                const int bits =
+                int bits =
                     juce::jlimit(
                         4,
                         16,
@@ -1527,18 +1601,60 @@ void ShakalizerAudioProcessor::processBlock(
                                 - crushAmount
                                   * 10.0f)));
 
+                if (spectralMode == 4)
+                    bits = juce::jlimit(
+                        3,
+                        11,
+                        bits - 2);
+
                 const float levels =
                     static_cast<float>(
                         (1u << bits) - 1u);
 
                 float x =
                     juce::jmap(
-                        amount
+                        effectiveAmount
                         * (0.64f
                            + localDecimate
                              * 0.25f),
                         band,
                         resampled);
+
+                if (spectralMode == 2)
+                {
+                    x =
+                        juce::jmap(
+                            effectiveAmount * 0.55f,
+                            x,
+                            resampled);
+                }
+                else if (spectralMode == 3)
+                {
+                    spectralFreeze[index] =
+                        juce::jmap(
+                            0.008f + effectiveAmount * 0.025f,
+                            spectralFreeze[index],
+                            x);
+
+                    x =
+                        juce::jmap(
+                            effectiveAmount * 0.72f,
+                            x,
+                            spectralFreeze[index]);
+                }
+                else if (spectralMode == 5)
+                {
+                    const float ring =
+                        std::sin(
+                            alienPhase[index] * 0.47f
+                            + movementPhase * 1.31f
+                            + static_cast<float>(index) * 0.91f);
+
+                    x *=
+                        0.72f
+                        + 0.28f * ring
+                        * effectiveAmount;
+                }
 
                 const float step =
                     2.0f
@@ -1551,14 +1667,25 @@ void ShakalizerAudioProcessor::processBlock(
                         (x
                          + tpdfDither(
                              step
-                             * 0.25f
+                             * 0.22f
                              * crushAmount))
                         * levels)
                     / levels;
 
+                const float quantizeMix =
+                    spectralMode == 0
+                        ? 0.42f
+                        : spectralMode == 1
+                            ? 0.62f
+                            : spectralMode == 2
+                                ? 0.24f
+                                : spectralMode == 4
+                                    ? 0.82f
+                                    : 0.48f;
+
                 x =
                     juce::jmap(
-                        amount * 0.58f,
+                        effectiveAmount * quantizeMix,
                         x,
                         quantized);
 
@@ -1566,7 +1693,7 @@ void ShakalizerAudioProcessor::processBlock(
                     waveFold(
                         x,
                         localFold
-                        * amount
+                        * effectiveAmount
                         * juce::jmap(
                             character,
                             0.45f,
@@ -1574,11 +1701,11 @@ void ShakalizerAudioProcessor::processBlock(
 
                 return softCeiling(
                     x,
-                    0.08f
-                    + amount * 0.17f);
+                    0.07f
+                    + effectiveAmount * 0.18f);
             };
 
-            const float shattered =
+                    const float shattered =
                 destroyBand(low, lowAmt)
                 + destroyBand(mid, midAmt)
                 + destroyBand(high, highAmt)
@@ -1716,78 +1843,232 @@ void ShakalizerAudioProcessor::processBlock(
 
             if (gridSlots > 0)
             {
-                const float wrapped =
+                const float cycles =
                     syncPhase
-                    / (2.0f * pi)
-                    - std::floor(
-                        syncPhase
-                        / (2.0f * pi));
+                    / (2.0f * pi);
+
+                const float wrapped =
+                    cycles - std::floor(cycles);
 
                 const int slot =
                     static_cast<int>(
-                        wrapped
-                        * gridSlots);
+                        wrapped * gridSlots);
 
                 gridBoundary =
-                    slot
-                    != lastGlitchGridSlot;
+                    slot != lastGlitchGridSlot;
 
                 if (gridBoundary)
-                    lastGlitchGridSlot =
-                        slot;
+                    lastGlitchGridSlot = slot;
             }
 
-            const float glitchChance =
-                localGlitch
-                * (0.008f
-                   + dynamicIntensity
-                     * 0.04f)
-                * (gridSlots > 0
-                    ? (gridBoundary
-                        ? 0.42f
-                        : 0.0f)
-                    : 0.00006f);
+            const float lengthBeats =
+                std::pow(
+                    2.0f,
+                    -6.0f
+                    + static_cast<float>(
+                        glitchLength));
+
+            const int requestedGlitchSamples =
+                juce::jlimit(
+                    8,
+                    16300,
+                    static_cast<int>(
+                        std::round(
+                            (60.0 / bpm)
+                            * lengthBeats
+                            * currentSampleRate)));
+
+            const float triggerChance =
+                gridSlots > 0
+                    ? localGlitch
+                      * (0.025f
+                         + dynamicIntensity * 0.12f)
+                      * (gridBoundary ? 1.0f : 0.0f)
+                    : localGlitch
+                      * 0.0000024f
+                      * (1.0f
+                         + dynamicIntensity * 2.0f);
 
             if (glitchCooldown[index] > 0)
                 --glitchCooldown[index];
 
-            if (glitchChance > 0.0f
+            glitchBuffer[index][
+                static_cast<size_t>(
+                    glitchWriteIndex)] = wet;
+
+            if (triggerChance > 0.0f
                 && glitchRemaining[index] <= 0
                 && glitchCooldown[index] <= 0
-                && nextRandom()
-                   < glitchChance)
+                && nextRandom() < triggerChance)
             {
+                glitchEventLength[index] =
+                    juce::jlimit(
+                        8,
+                        16300,
+                        static_cast<int>(
+                            std::round(
+                                requestedGlitchSamples
+                                * (0.55f
+                                   + 0.65f
+                                     * localGlitch))));
+
+                glitchEventAge[index] = 0;
                 glitchRemaining[index] =
-                    14
-                    + static_cast<int>(
-                        nextRandom()
-                        * 220.0f);
+                    glitchEventLength[index];
 
                 glitchCooldown[index] =
-                    850
-                    + static_cast<int>(
-                        nextRandom()
-                        * 5000.0f);
+                    juce::jlimit(
+                        180,
+                        10000,
+                        requestedGlitchSamples * 2
+                        + static_cast<int>(
+                            nextRandom() * 2200.0f));
 
-                glitchValue[index] =
-                    wet;
+                glitchValue[index] = wet;
             }
 
             if (glitchRemaining[index] > 0)
             {
-                const float holdMix =
-                    glitchRemaining[index] < 24
-                        ? static_cast<float>(
-                            glitchRemaining[index])
-                          / 24.0f
-                        : 1.0f;
+                const int eventLength =
+                    juce::jmax(
+                        8,
+                        glitchEventLength[index]);
 
-                wet =
-                    juce::jmap(
-                        holdMix,
-                        wet,
-                        glitchValue[index]);
+                const float p =
+                    juce::jlimit(
+                        0.0f,
+                        1.0f,
+                        static_cast<float>(
+                            glitchEventAge[index])
+                        / static_cast<float>(
+                            juce::jmax(
+                                1,
+                                eventLength - 1)));
 
+                switch (glitchMode)
+                {
+                    case 1: // Stutter.
+                    {
+                        const float smoothP =
+                            p * p * (3.0f - 2.0f * p);
+
+                        wet =
+                            juce::jmap(
+                                0.78f
+                                * (1.0f
+                                   - smoothP * 0.30f),
+                                wet,
+                                glitchValue[index]);
+                        break;
+                    }
+
+                    case 2: // Repeat.
+                    {
+                        const int loopLength =
+                            juce::jmax(
+                                8,
+                                juce::jmin(
+                                    eventLength,
+                                    16380));
+
+                        int read =
+                            glitchWriteIndex
+                            - 1
+                            - (glitchEventAge[index]
+                               % loopLength);
+
+                        while (read < 0)
+                            read += 16384;
+
+                        wet =
+                            juce::jmap(
+                                0.90f,
+                                wet,
+                                glitchBuffer[index][
+                                    static_cast<size_t>(
+                                        read)]);
+                        break;
+                    }
+
+                    case 3: // Tape stop.
+                    {
+                        const float stop =
+                            1.0f - p * p;
+
+                        wet *=
+                            0.06f
+                            + 0.94f * stop;
+                        break;
+                    }
+
+                    case 4: // Gate.
+                    {
+                        const float gate =
+                            p < 0.78f
+                                ? 0.10f
+                                : (1.0f - p)
+                                  * 0.45f;
+
+                        wet *= gate;
+                        break;
+                    }
+
+                    case 5: // Reverse.
+                    {
+                        const int loopLength =
+                            juce::jmax(
+                                8,
+                                juce::jmin(
+                                    eventLength,
+                                    16380));
+
+                        const int offset =
+                            glitchEventAge[index]
+                            % loopLength;
+
+                        int read =
+                            glitchWriteIndex
+                            - 1
+                            - (loopLength - 1 - offset);
+
+                        while (read < 0)
+                            read += 16384;
+
+                        wet =
+                            juce::jmap(
+                                0.94f,
+                                wet,
+                                glitchBuffer[index][
+                                    static_cast<size_t>(
+                                        read)]);
+                        break;
+                    }
+
+                    case 6: // Beat chop.
+                    {
+                        const int sub =
+                            (glitchEventAge[index]
+                             / juce::jmax(
+                                 1,
+                                 eventLength / 8)) & 1;
+
+                        wet *=
+                            sub == 0 ? 1.0f : 0.12f;
+                        break;
+                    }
+
+                    default: // Freeze.
+                    {
+                        wet =
+                            juce::jmap(
+                                0.95f,
+                                wet,
+                                glitchValue[index]);
+                        break;
+                    }
+                }
+
+                ++glitchEventAge[index];
                 --glitchRemaining[index];
             }
 
@@ -1928,6 +2209,11 @@ void ShakalizerAudioProcessor::processBlock(
         {
             resonatorWriteIndex = 0;
         }
+
+        ++glitchWriteIndex;
+
+        if (glitchWriteIndex >= 16384)
+            glitchWriteIndex = 0;
     }
 
     // M/S post-stage.
@@ -2109,6 +2395,31 @@ void ShakalizerAudioProcessor::processBlock(
                 sample,
                 x);
         }
+    }
+
+    for (int sample = 0;
+         sample < samples;
+         sample += juce::jmax(1, samples / 32))
+    {
+        const int slot =
+            scopeWriteIndex.fetch_add(1)
+            & 255;
+
+        const float left =
+            buffer.getSample(0, sample);
+
+        const float right =
+            channels > 1
+                ? buffer.getSample(1, sample)
+                : left;
+
+        scopeBuffer[
+            static_cast<size_t>(slot)]
+            .store(
+                juce::jlimit(
+                    -1.0f,
+                    1.0f,
+                    0.5f * (left + right)));
     }
 
     meterLevel.store(
