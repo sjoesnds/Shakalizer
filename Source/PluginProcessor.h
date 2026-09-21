@@ -38,6 +38,7 @@ public:
     float getMeterLevel() const noexcept { return meterLevel.load(); }
     float getScopeSample(int index) const noexcept { return scopeBuffer[static_cast<size_t>(juce::jlimit(0, 255, index))].load(); }
     int getScopeWriteIndex() const noexcept { return scopeWriteIndex.load(); }
+    float getBandLevel(int band) const noexcept { return bandLevels[static_cast<size_t>(juce::jlimit(0, 3, band))].load(); }
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -114,6 +115,7 @@ private:
     std::uint32_t rngState = 0xA341316Cu;
     std::array<std::atomic<float>, 256> scopeBuffer {};
     std::atomic<int> scopeWriteIndex { 0 };
+    std::array<std::atomic<float>, 4> bandLevels {};
     std::atomic<float> meterLevel { 0.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ShakalizerAudioProcessor)
