@@ -891,10 +891,10 @@ void ShakalizerAudioProcessorEditor::paint(
                     juce::Font::bold)));
         g.drawText(
             "LIVE SCOPE",
-            scope.getX() + 8.0f,
-            scope.getY() + 6.0f,
-            90.0f,
-            14.0f,
+            static_cast<int>(scope.getX() + 8.0f),
+            static_cast<int>(scope.getY() + 6.0f),
+            static_cast<int>(scope.getWidth() - 16.0f),
+            14,
             juce::Justification::left,
             false);
     }
@@ -1264,54 +1264,75 @@ void ShakalizerAudioProcessorEditor::timerCallback()
 
 void ShakalizerAudioProcessorEditor::savePresetToFile()
 {
-    juce::FileChooser chooser(
-        "Save Shakalizer Preset",
-        juce::File(),
-        "*.shakal");
+    presetFileChooser =
+        std::make_unique<juce::FileChooser>(
+            "Save Shakalizer Preset",
+            juce::File::getSpecialLocation(
+                juce::File::userDocumentsDirectory),
+            "*.shakal");
 
-    if (!chooser.browseForFileToSave(true,
-                                     "ShakalizerPreset.shakal",
-                                     nullptr))
-        return;
+    presetFileChooser->launchAsync(
+        juce::FileBrowserComponent::saveMode
+        | juce::FileBrowserComponent::canSelectFiles
+        | juce::FileBrowserComponent::warnAboutOverwriting,
+        [this](const juce::FileChooser& chooser)
+        {
+            const auto file = chooser.getResult();
 
-    const auto file = chooser.getResult();
+            if (file != juce::File())
+            {
+                auto xml =
+                    processor.getAPVTS()
+                        .copyState()
+                        .createXml();
 
-    if (auto xml =
-            processor.getAPVTS()
-                .copyState()
-                .createXml())
-    {
-        file.replaceWithText(
-            xml->toString());
-    }
+                if (xml != nullptr)
+                    file.replaceWithText(
+                        xml->toString());
+            }
+
+            presetFileChooser.reset();
+        },
+        this);
 }
 
 void ShakalizerAudioProcessorEditor::loadPresetFromFile()
 {
-    juce::FileChooser chooser(
-        "Load Shakalizer Preset",
-        juce::File(),
-        "*.shakal");
+    presetFileChooser =
+        std::make_unique<juce::FileChooser>(
+            "Load Shakalizer Preset",
+            juce::File::getSpecialLocation(
+                juce::File::userDocumentsDirectory),
+            "*.shakal");
 
-    if (!chooser.browseForFileToOpen())
-        return;
-
-    const auto file = chooser.getResult();
-
-    if (auto xml = juce::parseXML(file))
-    {
-        if (xml->hasTagName(
-                processor.getAPVTS()
-                    .state.getType()))
+    presetFileChooser->launchAsync(
+        juce::FileBrowserComponent::openMode
+        | juce::FileBrowserComponent::canSelectFiles,
+        [this](const juce::FileChooser& chooser)
         {
-            processor.getAPVTS().replaceState(
-                juce::ValueTree::fromXml(*xml));
+            const auto file = chooser.getResult();
 
-            presetBox.setSelectedId(
-                1,
-                juce::dontSendNotification);
-        }
-    }
+            if (file != juce::File())
+            {
+                if (auto xml = juce::parseXML(file))
+                {
+                    if (xml->hasTagName(
+                            processor.getAPVTS()
+                                .state.getType()))
+                    {
+                        processor.getAPVTS().replaceState(
+                            juce::ValueTree::fromXml(*xml));
+
+                        presetBox.setSelectedId(
+                            1,
+                            juce::dontSendNotification);
+                    }
+                }
+            }
+
+            presetFileChooser.reset();
+        },
+        this);
 }
 
 void ShakalizerAudioProcessorEditor::saveA()
