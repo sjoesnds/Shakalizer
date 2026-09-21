@@ -36,6 +36,7 @@ public:
 
     juce::AudioProcessorValueTreeState& getAPVTS() noexcept { return apvts; }
     float getMeterLevel() const noexcept { return meterLevel.load(); }
+    float getScopeSample(int index) const noexcept { return scopeBuffer[static_cast<size_t>(juce::jlimit(0, 255, index))].load(); }
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -80,6 +81,12 @@ private:
     std::array<float, 2> glitchValue { 0.0f, 0.0f };
     std::array<int, 2> glitchRemaining { 0, 0 };
     std::array<int, 2> glitchCooldown { 0, 0 };
+    std::array<int, 2> glitchEventLength { 1, 1 };
+    std::array<int, 2> glitchEventAge { 0, 0 };
+    std::array<std::array<float, 16384>, 2> glitchBuffer {};
+    int glitchWriteIndex = 0;
+
+    std::array<float, 2> spectralFreeze { 0.0f, 0.0f };
 
     std::array<std::array<float, 8192>, 2> resonatorBuffer {};
     int resonatorWriteIndex = 0;
@@ -99,6 +106,7 @@ private:
     float morphPhase = 0.0f;
 
     std::uint32_t rngState = 0xA341316Cu;
+    std::array<std::atomic<float>, 256> scopeBuffer {};
     std::atomic<float> meterLevel { 0.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ShakalizerAudioProcessor)
