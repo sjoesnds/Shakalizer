@@ -266,7 +266,7 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0,
         80, 0.05, 0, -12,
-        0, 0, 0, 0, 0,
+        0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, -24
     };
 
@@ -274,7 +274,7 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1,
         18000, 0.95, 1, 6,
-        1, 1, 1, 1, 1,
+        1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 12
     };
 
