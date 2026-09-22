@@ -216,6 +216,11 @@ ShakalizerAudioProcessor::createParameterLayout()
     addFloat("macroCurve", "Macro Curve", 0, 1, 0.001f, 0.50f);
     addFloat("sceneMorphTime", "Scene Morph Time", 0, 1, 0.001f, 0.50f);
 
+    addFloat("damageMacro", "Damage", 0, 1, 0.001f, 0.0f);
+    addFloat("motionMacro", "Motion", 0, 1, 0.001f, 0.0f);
+    addFloat("chaosMacro", "Chaos", 0, 1, 0.001f, 0.0f);
+    addFloat("spaceMacro", "Space", 0, 1, 0.001f, 0.0f);
+
     p.push_back(
         std::make_unique<
             juce::AudioParameterChoice>(
@@ -380,6 +385,17 @@ ShakalizerAudioProcessor::createParameterLayout()
                     "1/8", "1/4", "1/2"
                 },
                 2));
+
+    p.push_back(
+        std::make_unique<
+            juce::AudioParameterChoice>(
+                "glitchPattern",
+                "Glitch Pattern",
+                juce::StringArray {
+                    "Auto", "Straight", "Offbeat",
+                    "Syncopated", "Sparse", "Dense", "Burst"
+                },
+                0));
 
     p.push_back(
         std::make_unique<
@@ -983,6 +999,10 @@ void ShakalizerAudioProcessor::processBlock(
     const float reactiveBass = clamp01(value("reactiveBass"));
     const float reactiveHigh = clamp01(value("reactiveHigh"));
     const float macroCurve = clamp01(value("macroCurve"));
+    float damageMacro = clamp01(value("damageMacro"));
+    float motionMacro = clamp01(value("motionMacro"));
+    float chaosMacro = clamp01(value("chaosMacro"));
+    float spaceMacro = clamp01(value("spaceMacro"));
     const float timelineSteps[8] {
         clamp01(value("timelineStep1")), clamp01(value("timelineStep2")),
         clamp01(value("timelineStep3")), clamp01(value("timelineStep4")),
@@ -1075,6 +1095,12 @@ void ShakalizerAudioProcessor::processBlock(
             apvts,
             "glitchLength",
             2);
+
+    const int glitchPattern =
+        choiceIndex(
+            apvts,
+            "glitchPattern",
+            0);
 
     const int spectralMode =
         choiceIndex(
@@ -1202,6 +1228,35 @@ void ShakalizerAudioProcessor::processBlock(
             0.0f,
             1.0f,
             shift + macroShaped * 0.045f);
+
+    const float damageBoost =
+        std::pow(damageMacro, 0.78f);
+    const float motionBoost =
+        std::pow(motionMacro, 0.72f);
+    const float chaosBoost =
+        std::pow(chaosMacro, 0.68f);
+    const float spaceBoost =
+        std::pow(spaceMacro, 0.80f);
+
+    destroy = clamp01(destroy + damageBoost * 0.30f);
+    crush = clamp01(crush + damageBoost * damageBoost * 0.20f);
+    decimate = clamp01(decimate + damageBoost * 0.16f);
+    drive = clamp01(drive + damageBoost * 0.13f);
+    clip = clamp01(clip + damageBoost * 0.10f);
+    shatter = clamp01(shatter + damageBoost * 0.22f);
+
+    movement = clamp01(movement + motionBoost * 0.34f);
+    jitter = clamp01(jitter + motionBoost * 0.22f);
+    glitch = clamp01(glitch + motionBoost * 0.14f);
+
+    unstable = clamp01(unstable + chaosBoost * 0.38f);
+    pitchChaos = clamp01(pitchChaos + chaosBoost * 0.30f);
+    glitch = clamp01(glitch + chaosBoost * 0.12f);
+
+    feedback = clamp01(feedback + spaceBoost * 0.22f);
+    feedbackSpread = clamp01(feedbackSpread + spaceBoost * 0.30f);
+    feedbackDiffusion = clamp01(feedbackDiffusion + spaceBoost * 0.18f);
+    stereo = clamp01(stereo + spaceBoost * 0.22f);
 
     float intensity =
         clamp01(
@@ -2619,89 +2674,105 @@ void ShakalizerAudioProcessor::processBlock(
                   * unstable
                   * 0.08f;
 
-            // v3 character fingerprints.
+            // v6 Character Engine 2.0.
             switch (characterMode)
             {
-                case 1:
+                case 1: // Digital.
                 {
                     const float levels =
                         std::pow(2.0f, 17.0f - character * 8.0f);
-
                     wet =
                         std::round(wet * levels)
                         / juce::jmax(1.0f, levels);
+                    wet =
+                        std::tanh(wet * (1.0f + character * 1.8f));
                     break;
                 }
 
-                case 2:
+                case 2: // VHS.
+                {
+                    const float flutter =
+                        std::sin(alienPhase[index] * 0.21f
+                                 + movementPhase * 0.071f)
+                        * character * 0.10f;
                     wet =
                         juce::jmap(
-                            character * 0.28f,
+                            character * 0.32f,
                             wet,
                             previousHeldSample[index]);
+                    wet *= 0.88f + flutter;
                     break;
+                }
 
-                case 3:
+                case 3: // Console.
                     wet =
                         shapedSample(
                             wet,
-                            character * 9.0f,
-                            character * 0.48f);
+                            character * 9.0f + character * character * 4.0f,
+                            character * 0.50f);
+                    wet = std::tanh(wet * (1.0f + character));
                     break;
 
-                case 4:
+                case 4: // Radio.
                     wet =
-                        0.5f
-                        * (wet
-                           + air
-                             * (0.35f + character * 0.45f));
+                        0.45f * wet
+                        + 0.55f * air * (0.30f + character * 0.52f);
+                    wet = std::tanh(wet * (1.0f + character * 0.65f));
                     break;
 
-                case 5:
-                    wet +=
-                        wet
-                        * std::sin(
-                            alienPhase[index] * 1.7f
-                            + movementPhase * 2.3f)
-                        * character
-                        * 0.26f;
-                    break;
-
-                case 6:
+                case 5: // Metallic.
                 {
-                    const float levels =
-                        7.0f + character * 9.0f;
-
-                    wet =
-                        std::round(wet * levels)
-                        / levels;
+                    const float metal =
+                        std::sin(alienPhase[index] * 1.7f
+                                 + movementPhase * 2.3f);
+                    wet += wet * metal * character * 0.34f;
+                    wet = std::tanh(wet * (1.0f + character * 0.7f));
                     break;
                 }
 
-                case 7:
+                case 6: // Broken.
+                {
+                    const float levels = 7.0f + character * 14.0f;
+                    wet = std::round(wet * levels) / levels;
                     wet *=
-                        0.72f
-                        + 0.28f
-                          * std::sin(
-                              alienPhase[index] * 0.37f);
+                        0.78f
+                        + 0.22f * std::sin(
+                            alienPhase[index] * 0.37f
+                            + movementBipolar * 2.0f);
+                    break;
+                }
+
+                case 7: // Alien.
+                {
+                    const float carrier =
+                        std::sin(alienPhase[index] * 0.83f
+                                 + movementPhase * 1.71f);
+                    wet =
+                        wet * (0.70f + 0.30f * carrier)
+                        + wet * carrier * character * 0.24f;
+                    break;
+                }
+
+                case 8: // Cheap DAC.
+                    wet =
+                        std::round(
+                            (wet + tpdfDither(0.0025f + character * 0.012f))
+                            * (24.0f + (1.0f - character) * 80.0f))
+                        / (24.0f + (1.0f - character) * 80.0f);
                     break;
 
-                case 8:
+                case 9: // Corrupt.
+                {
+                    const float phaseWarp =
+                        std::sin(
+                            (wet * 5.0f + movementBipolar * 1.7f)
+                            * (1.0f + character * 7.0f));
+                    wet *= 0.52f + 0.48f * phaseWarp;
                     wet +=
-                        tpdfDither(
-                            0.0035f
-                            + character * 0.012f);
+                        std::sin(alienPhase[index] * 3.1f)
+                        * wet * character * 0.18f;
                     break;
-
-                case 9:
-                    wet *=
-                        0.58f
-                        + 0.42f
-                          * std::sin(
-                              (wet * 4.0f
-                               + movementBipolar)
-                              * (1.0f + character * 5.0f));
-                    break;
+                }
 
                 default:
                     break;
@@ -3124,6 +3195,27 @@ void ShakalizerAudioProcessor::processBlock(
                     1.0f,
                     timelineSteps[timelineSlot]);
 
+            float patternGate = 1.0f;
+            switch (glitchPattern)
+            {
+                case 1: patternGate = (timelineSlot & 1) == 0 ? 1.0f : 0.0f; break;
+                case 2: patternGate = (timelineSlot & 1) != 0 ? 1.0f : 0.0f; break;
+                case 3:
+                    patternGate =
+                        (timelineSlot == 0 || timelineSlot == 3
+                         || timelineSlot == 4 || timelineSlot == 6)
+                            ? 1.0f : 0.0f;
+                    break;
+                case 4:
+                    patternGate =
+                        (timelineSlot == 0 || timelineSlot == 4)
+                            ? 1.0f : 0.0f;
+                    break;
+                case 5: patternGate = 1.0f; break;
+                case 6: patternGate = timelineSlot < 4 ? 1.0f : 0.0f; break;
+                default: break;
+            }
+
             const float triggerChance =
                 gridSlots > 0
                     ? localGlitch
@@ -3133,12 +3225,14 @@ void ShakalizerAudioProcessor::processBlock(
                          + dynamicIntensity * 0.12f)
                       * (gridBoundary ? 1.0f : 0.0f)
                       * timelineLevel
+                      * patternGate
                     : localGlitch
                       * glitchDensity
                       * glitchProbability
                       * 0.000018f
                       * (0.65f
-                         + dynamicIntensity * 1.55f);
+                         + dynamicIntensity * 1.55f)
+                      * (0.45f + 0.55f * patternGate);
 
             if (glitchCooldown[index] > 0)
                 --glitchCooldown[index];
@@ -3469,19 +3563,20 @@ void ShakalizerAudioProcessor::processBlock(
                     dry,
                     destroyed);
 
-            // v4 routing topology.
+            // v6 routing topology.
             switch (routingTopology)
             {
                 case 1:
                     out =
-                        0.5f
-                        * (dry + out);
+                        dry * (0.52f - 0.18f * macro)
+                        + out * (0.48f + 0.18f * macro);
                     break;
 
                 case 2:
                     out =
                         juce::jmap(
-                            reactiveSignal,
+                            juce::jlimit(0.0f, 1.0f,
+                                         0.38f + reactiveSignal * 0.84f),
                             dry,
                             out);
                     break;
@@ -3489,9 +3584,13 @@ void ShakalizerAudioProcessor::processBlock(
                 case 3:
                     out =
                         juce::jmap(
-                            0.5f + 0.5f * movementBipolar,
+                            juce::jlimit(0.0f, 1.0f,
+                                         0.5f + 0.5f * movementBipolar),
                             dry,
                             out);
+                    out *=
+                        0.92f
+                        + 0.08f * std::sin(morphPhase * 1.73f);
                     break;
 
                 case 4:
@@ -3502,14 +3601,14 @@ void ShakalizerAudioProcessor::processBlock(
                             out
                             + feedbackState[index]
                               * feedback
-                              * 0.08f);
+                              * (0.08f + 0.06f * spaceBoost));
                     break;
 
                 case 5:
                     out *=
                         index == 0
-                            ? 1.0f + stereo * 0.16f
-                            : 1.0f - stereo * 0.16f;
+                            ? 1.0f + stereo * (0.16f + 0.20f * spaceBoost)
+                            : 1.0f - stereo * (0.16f + 0.20f * spaceBoost);
                     break;
 
                 default:
