@@ -69,6 +69,9 @@ private:
 
     std::array<juce::dsp::StateVariableTPTFilter<float>, 2> postFilter;
     std::array<juce::dsp::StateVariableTPTFilter<float>, 2> safetyFilter;
+    std::array<float, 2> lastFilterCutoff {
+        0.0f, 0.0f
+    };
 
     juce::AudioBuffer<float> dryBuffer;
 
