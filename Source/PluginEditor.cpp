@@ -702,6 +702,36 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         swapAB();
     };
 
+    saveCButton.onClick = [this]
+    {
+        saveC();
+    };
+
+    cdButton.onClick = [this]
+    {
+        swapCD();
+    };
+
+    smashButton.onClick = [this]
+    {
+        processor.triggerSmash();
+    };
+
+    glitchButton.onClick = [this]
+    {
+        processor.triggerGlitch();
+    };
+
+    freezeButton.onClick = [this]
+    {
+        processor.triggerFreeze();
+    };
+
+    failButton.onClick = [this]
+    {
+        processor.triggerFail();
+    };
+
     autoMatchButton.onClick = [this]
     {
         toggleAutoMatch();
@@ -776,6 +806,12 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
     for (auto* button : {
         &saveAButton,
         &abButton,
+        &saveCButton,
+        &cdButton,
+        &smashButton,
+        &glitchButton,
+        &freezeButton,
+        &failButton,
         &autoMatchButton,
         &smartButton,
         &randomAllButton,
@@ -869,7 +905,9 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         "pitchDrift", "reactiveAmount", "reactiveTransient",
         "reactiveSpectral", "reactiveBass", "reactiveHigh",
         "macroCurve", "sceneMorphTime",
-        "damageMacro", "motionMacro", "chaosMacro", "spaceMacro"
+        "damageMacro", "motionMacro", "chaosMacro", "spaceMacro",
+        "antiNoise", "antiDc", "antiAir", "antiPeak",
+        "humanRandom", "audioAware", "chaosShape"
     }};
 
     for (int i = 0;
@@ -1175,6 +1213,22 @@ void ShakalizerAudioProcessorEditor::resized()
     // The modulation matrix is only shown on the MOD page.
     const bool modPage = currentPage == 3;
 
+    const bool performPage = currentPage == 8;
+    for (auto* button : { &saveCButton, &cdButton,
+                          &smashButton, &glitchButton,
+                          &freezeButton, &failButton })
+        button->setVisible(performPage);
+
+    if (performPage)
+    {
+        saveCButton.setBounds(30, contentTop + 152, 72, 26);
+        cdButton.setBounds(106, contentTop + 152, 56, 26);
+        smashButton.setBounds(30, contentTop + 184, 82, 26);
+        glitchButton.setBounds(116, contentTop + 184, 82, 26);
+        freezeButton.setBounds(202, contentTop + 184, 82, 26);
+        failButton.setBounds(288, contentTop + 184, 82, 26);
+    }
+
     for (int i = 0; i < 8; ++i)
     {
         auto* source = modSourceBoxes[static_cast<size_t>(i)];
@@ -1240,7 +1294,7 @@ void ShakalizerAudioProcessorEditor::setPage(int page)
 
     static const char* names[] {
         "CORE", "GLITCH", "SPECTRAL", "MOD",
-        "GRANULAR", "FEEDBACK", "REACTIVE", "MACRO"
+        "GRANULAR", "FEEDBACK", "REACTIVE", "MACRO", "PERFORM"
     };
 
     pageLabel.setText(
@@ -1300,6 +1354,9 @@ bool ShakalizerAudioProcessorEditor::sliderBelongsToPage(
             return i == 0
                 || i == 17
                 || (i >= 101 && i <= 104);
+
+        case 8: // Performance / intelligent cleanup.
+            return i >= 105 && i <= 111;
 
         default:
             return false;
@@ -1465,6 +1522,27 @@ void ShakalizerAudioProcessorEditor::saveA()
 
     hasAState =
         !abState.empty();
+}
+
+void ShakalizerAudioProcessorEditor::saveC()
+{
+    captureState(cdState);
+    hasCState = !cdState.empty();
+}
+
+void ShakalizerAudioProcessorEditor::swapCD()
+{
+    if (!hasCState)
+    {
+        saveC();
+        return;
+    }
+
+    std::vector<float> current;
+    captureState(current);
+    applyState(cdState);
+    cdState = std::move(current);
+    presetBox.setSelectedId(1, juce::dontSendNotification);
 }
 
 void ShakalizerAudioProcessorEditor::swapAB()
@@ -2080,6 +2158,13 @@ void ShakalizerAudioProcessorEditor::loadPreset(
         setNormalised(processor, "motionMacro", 0.0f);
         setNormalised(processor, "chaosMacro", 0.0f);
         setNormalised(processor, "spaceMacro", 0.0f);
+    setNormalised(processor, "antiNoise", 0.46f);
+    setNormalised(processor, "antiDc", 0.70f);
+    setNormalised(processor, "antiAir", 0.62f);
+    setNormalised(processor, "antiPeak", 0.72f);
+    setNormalised(processor, "humanRandom", 0.68f);
+    setNormalised(processor, "audioAware", 0.66f);
+    setNormalised(processor, "chaosShape", 0.58f);
         setChoice(processor, "fftWindow", 0, 4);
         setChoice(processor, "pitchMode", 0, 4);
         setChoice(processor, "routingTopology", 0, 6);
