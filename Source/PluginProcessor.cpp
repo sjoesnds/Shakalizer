@@ -2182,29 +2182,6 @@ void ShakalizerAudioProcessor::processBlock(
             localGlitch =
                 clamp01(localGlitch);
 
-            if (performActive)
-            {
-                const float pulse = performFade * (1.0f - 0.25f * performFade);
-                if (performType == 1)
-                {
-                    dynamicIntensity = juce::jlimit(0.0f, 1.0f, dynamicIntensity + pulse * 0.52f);
-                    localDestroy = juce::jlimit(0.0f, 1.0f, localDestroy + pulse * 0.38f);
-                    localCrush = juce::jlimit(0.0f, 1.0f, localCrush + pulse * 0.24f);
-                }
-                else if (performType == 2)
-                {
-                    localGlitch = 1.0f;
-                    localDestroy = juce::jlimit(0.0f, 1.0f, localDestroy + pulse * 0.22f);
-                }
-                else if (performType == 4)
-                {
-                    dynamicIntensity = juce::jlimit(0.0f, 1.0f, dynamicIntensity + pulse * 0.44f);
-                    localShatter = juce::jlimit(0.0f, 1.0f, localShatter + pulse * 0.34f);
-                    localFold = juce::jlimit(0.0f, 1.0f, localFold + pulse * 0.18f);
-                    localGlitch = juce::jlimit(0.0f, 1.0f, localGlitch + pulse * 0.42f);
-                }
-            }
-
             const float reactiveSignal =
                 clamp01(
                     transientAmount * reactiveTransient
@@ -3419,7 +3396,7 @@ void ShakalizerAudioProcessor::processBlock(
                             std::round(
                                 requestedGlitchSamples
                                 * eventVariation
-                                * (0.86f + humanRandom * 0.30f)));
+                                * (0.86f + humanRandom * 0.30f))));
 
                 glitchEventAge[index] = 0;
                 glitchRemaining[index] =
