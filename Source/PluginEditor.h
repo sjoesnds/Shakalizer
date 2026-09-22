@@ -47,7 +47,19 @@ private:
         float level = 0.0f;
     };
 
-    static constexpr int sliderCount = 101;
+    class Visualizer final : public juce::Component
+    {
+    public:
+        explicit Visualizer(ShakalizerAudioProcessor& p)
+            : processor(p) {}
+
+        void paint(juce::Graphics&) override;
+
+    private:
+        ShakalizerAudioProcessor& processor;
+    };
+
+    static constexpr int sliderCount = 105;
 
     void configureSlider(juce::Slider&, const juce::String&,
                          double min, double max, double step);
@@ -75,19 +87,21 @@ private:
 
     ShakalizerAudioProcessor& processor;
     ShakalLookAndFeel lookAndFeel;
+    Visualizer visualizer;
 
     juce::Label titleLabel;
     juce::Label subtitleLabel;
     juce::Label pageLabel;
 
-    std::array<juce::TextButton, 7> pageButtons {
+    std::array<juce::TextButton, 8> pageButtons {
         juce::TextButton { "CORE" },
         juce::TextButton { "GLITCH" },
         juce::TextButton { "SPECTRAL" },
         juce::TextButton { "MOD" },
         juce::TextButton { "GRANULAR" },
         juce::TextButton { "FEEDBACK" },
-        juce::TextButton { "REACTIVE" }
+        juce::TextButton { "REACTIVE" },
+        juce::TextButton { "MACRO" }
     };
 
     int currentPage = 0;
@@ -101,6 +115,7 @@ private:
     juce::ComboBox syncBox;
     juce::ComboBox glitchGridBox;
     juce::ComboBox glitchModeBox;
+    juce::ComboBox glitchPatternBox;
     juce::ComboBox glitchLengthBox;
     juce::ComboBox spectralModeBox;
     juce::ComboBox modWaveBox;
@@ -268,6 +283,10 @@ private:
     juce::Slider reactiveHighSlider;
     juce::Slider macroCurveSlider;
     juce::Slider sceneMorphTimeSlider;
+    juce::Slider damageMacroSlider;
+    juce::Slider motionMacroSlider;
+    juce::Slider chaosMacroSlider;
+    juce::Slider spaceMacroSlider;
 
     std::array<juce::Slider*, sliderCount> sliders {
         &shakalSlider, &destroySlider, &crushSlider, &decimateSlider,
@@ -305,7 +324,9 @@ private:
         &feedbackPitchSlider, &pitchDamageSlider, &pitchRangeSlider,
         &pitchDriftSlider, &reactiveAmountSlider, &reactiveTransientSlider,
         &reactiveSpectralSlider, &reactiveBassSlider, &reactiveHighSlider,
-        &macroCurveSlider, &sceneMorphTimeSlider
+        &macroCurveSlider, &sceneMorphTimeSlider,
+        &damageMacroSlider, &motionMacroSlider,
+        &chaosMacroSlider, &spaceMacroSlider
     };
 
     std::array<juce::String, sliderCount> sliderNames {
@@ -335,7 +356,8 @@ private:
         "FEEDBACK DIFFUSION", "FEEDBACK FREEZE", "FEEDBACK SPREAD",
         "FEEDBACK PITCH", "PITCH DAMAGE", "PITCH RANGE", "PITCH DRIFT",
         "REACTIVE AMOUNT", "REACTIVE TRANSIENT", "REACTIVE SPECTRAL",
-        "REACTIVE BASS", "REACTIVE HIGH", "MACRO CURVE", "SCENE MORPH"
+        "REACTIVE BASS", "REACTIVE HIGH", "MACRO CURVE", "SCENE MORPH",
+        "DAMAGE", "MOTION", "CHAOS", "SPACE"
     };
 
     std::vector<std::unique_ptr<
@@ -373,6 +395,10 @@ private:
     std::unique_ptr<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>
         glitchModeAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        glitchPatternAttachment;
 
     std::unique_ptr<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>
@@ -429,7 +455,7 @@ private:
     std::vector<float> abState;
     bool hasAState = false;
 
-    std::array<bool, 16> favoritePresets {};
+    std::array<bool, 24> favoritePresets {};
     std::unique_ptr<juce::FileChooser> presetFileChooser;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
