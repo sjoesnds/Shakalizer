@@ -1156,7 +1156,7 @@ void ShakalizerAudioProcessorEditor::resized()
     presetBox.setBounds(w - 156, 15, 80, 28);
 
     const int visualizerX =
-        juce::jmin(872, juce::jmax(700, w - 310));
+        juce::jmax(970, w - 200);
 
     visualizer.setBounds(
         visualizerX,
@@ -1844,6 +1844,13 @@ void ShakalizerAudioProcessorEditor::randomizeAll()
     setNorm("motionMacro", random.nextFloat() * 0.72f);
     setNorm("chaosMacro", 0.05f + random.nextFloat() * 0.70f);
     setNorm("spaceMacro", random.nextFloat() * 0.58f);
+    setNorm("antiNoise", 0.32f + random.nextFloat() * 0.58f);
+    setNorm("antiDc", 0.45f + random.nextFloat() * 0.48f);
+    setNorm("antiAir", 0.38f + random.nextFloat() * 0.54f);
+    setNorm("antiPeak", 0.42f + random.nextFloat() * 0.54f);
+    setNorm("humanRandom", 0.42f + random.nextFloat() * 0.54f);
+    setNorm("audioAware", 0.38f + random.nextFloat() * 0.58f);
+    setNorm("chaosShape", 0.18f + random.nextFloat() * 0.72f);
     setChoice("glitchPattern", 7);
 
     // Auto Match and Smart stay available, but Smart is favored for random patches.
