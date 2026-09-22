@@ -2324,20 +2324,6 @@ void ShakalizerAudioProcessor::processBlock(
                             0.0f, 1.0f,
                             localGlitch + pulse * 0.42f);
                 }
-                else if (performType == 5) // Cut.
-                    wet = juce::jmap(pulse * 0.90f, wet, 0.0f);
-                else if (performType == 6) // Reverse.
-                    wet = juce::jmap(pulse * 0.88f, wet, glitchValue[index]);
-                else if (performType == 7) // Shatter.
-                {
-                    localShatter = juce::jlimit(0.0f, 1.0f, localShatter + pulse * 0.56f);
-                    localFold = juce::jlimit(0.0f, 1.0f, localFold + pulse * 0.24f);
-                }
-                else if (performType == 8) // Melt.
-                {
-                    wet = juce::jmap(pulse * 0.62f, wet, heldSample[index]);
-                    wet = std::tanh(wet * (1.0f + pulse * 2.0f));
-                }
             }
 
             if (reactiveAmount > 0.0001f)
@@ -3640,6 +3626,52 @@ void ShakalizerAudioProcessor::processBlock(
                     movementPhase * (5.0f + chaosBoost * 17.0f)
                     + static_cast<float>(index));
                 wet *= 0.58f + 0.42f * failWave;
+            }
+
+            // Extended performance actions operate after wet exists.
+            if (performActive)
+            {
+                if (performType == 5) // Cut.
+                {
+                    wet = juce::jmap(
+                        performFade * performanceIntensity * 0.90f,
+                        wet,
+                        0.0f);
+                }
+                else if (performType == 6) // Reverse / buffer grab.
+                {
+                    wet = juce::jmap(
+                        performFade * performanceIntensity * 0.88f,
+                        wet,
+                        glitchValue[index]);
+                }
+                else if (performType == 7) // Shatter.
+                {
+                    const float shatterPulse =
+                        juce::jlimit(
+                            0.0f,
+                            1.0f,
+                            performFade * performanceIntensity);
+                    wet = waveFold(
+                        wet,
+                        shatterPulse * 0.30f);
+                    wet = std::tanh(
+                        wet * (1.0f + shatterPulse * 1.45f));
+                }
+                else if (performType == 8) // Melt.
+                {
+                    const float meltPulse =
+                        juce::jlimit(
+                            0.0f,
+                            1.0f,
+                            performFade * performanceIntensity);
+                    wet = juce::jmap(
+                        meltPulse * 0.62f,
+                        wet,
+                        heldSample[index]);
+                    wet = std::tanh(
+                        wet * (1.0f + meltPulse * 2.0f));
+                }
             }
 
             if (glitchRemaining[index] > 0)
