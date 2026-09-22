@@ -663,6 +663,7 @@ void ShakalizerAudioProcessor::prepareToPlay(
     autoMatchGain = 1.0f;
     morphPhase = 0.0f;
     dcBlockState.fill(0.0f);
+    outputGlueState.fill(0.0f);
     performHeldSample.fill(0.0f);
     performTrigger.store(0);
     performType = 0;
