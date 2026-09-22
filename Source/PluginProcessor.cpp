@@ -3365,9 +3365,17 @@ void ShakalizerAudioProcessor::processBlock(
                         2.0f,
                         cutoffMod));
 
-            postFilter[index]
-                .setCutoffFrequency(
-                    modCutoff);
+            if (std::abs(
+                    modCutoff
+                    - lastFilterCutoff[index]) > 1.0f)
+            {
+                postFilter[index]
+                    .setCutoffFrequency(
+                        modCutoff);
+
+                lastFilterCutoff[index] =
+                    modCutoff;
+            }
 
             wet =
                 postFilter[index]
