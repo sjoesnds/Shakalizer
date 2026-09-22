@@ -1320,7 +1320,9 @@ bool ShakalizerAudioProcessorEditor::sliderBelongsToPage(
         case 0: // Core.
             return (i >= 0 && i <= 5)
                 || (i >= 8 && i <= 18)
-                || (i >= 28 && i <= 30);
+                || (i >= 28 && i <= 30)
+                || i == 105; // ANTI-NOISE is kept immediately accessible.
+
 
         case 1: // Glitch / timeline.
             return i == 6 || i == 7
