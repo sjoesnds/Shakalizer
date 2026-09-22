@@ -975,8 +975,6 @@ void ShakalizerAudioProcessorEditor::paint(
 void ShakalizerAudioProcessorEditor::resized()
 {
     const int w = getWidth();
-    const int h = getHeight();
-
     titleLabel.setBounds(30, 15, 190, 32);
     subtitleLabel.setBounds(30, 44, 255, 15);
 
@@ -1503,7 +1501,7 @@ void ShakalizerAudioProcessorEditor::randomizeAll()
     };
 
     auto setChoice =
-        [this, &random](const char* id, int count)
+        [this](const char* id, int count)
     {
         if (auto* parameter =
                 processor.getAPVTS().getParameter(id))
@@ -1612,7 +1610,7 @@ void ShakalizerAudioProcessorEditor::randomizeAll()
     }
 
     // Avoid choosing the heaviest possible combination too often.
-    setChoice("quality", random.nextFloat() < 0.45f ? 3 : 2);
+    setChoice("quality", random.nextFloat() < 0.45f ? 2 : 1);
     setChoice("mode", 9);
     setChoice("resampleMode", 5);
     setChoice("glitchMode", 7);
