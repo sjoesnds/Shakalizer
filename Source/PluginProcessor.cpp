@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+// V6 CI validation marker.
 #include "PluginEditor.h"
 
 namespace
