@@ -130,3 +130,15 @@ The v4 pass expands the workstation with adaptive reactive destruction, delayed 
 - **Editor:** expanded 101-slider bank plus dedicated v4 mode selectors.
 
 v4 keeps fixed-size realtime buffers and avoids dynamic allocation in the audio-processing path.
+
+
+## v4.1 — Compact / Stability Pass
+
+- Default editor size reduced to 1180x760.
+- Minimum editor size reduced to 980x700.
+- 101 controls are split across compact CORE / GLITCH / SPECTRAL / MOD / GRANULAR / FEEDBACK / REACTIVE pages.
+- Control spacing is reduced to a tight 2px grid with compact rotary controls.
+- Utility buttons remain available in the compact header.
+- Feedback recursion is hard-limited and invalid feedback states are reset.
+- Auto Match gain is finite-checked and bounded.
+- Final output keeps finite-sample and safety limiting protection.
