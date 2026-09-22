@@ -59,7 +59,7 @@ private:
         ShakalizerAudioProcessor& processor;
     };
 
-    static constexpr int sliderCount = 105;
+    static constexpr int sliderCount = 111;
 
     void configureSlider(juce::Slider&, const juce::String&,
                          double min, double max, double step);
@@ -74,6 +74,9 @@ private:
 
     void randomizeAll();
     void randomizeScope(int scope);
+    void humanizeRandom();
+    void storeScene(int index);
+    void recallScene(int index);
 
     void savePresetToFile();
     void loadPresetFromFile();
@@ -101,7 +104,8 @@ private:
         juce::TextButton { "GRANULAR" },
         juce::TextButton { "FEEDBACK" },
         juce::TextButton { "REACTIVE" },
-        juce::TextButton { "MACRO" }
+        juce::TextButton { "MACRO" },
+        juce::TextButton { "INTEL" }
     };
 
     int currentPage = 0;
@@ -169,6 +173,17 @@ private:
     juce::TextButton savePresetButton { "SAVE" };
     juce::TextButton loadPresetButton { "LOAD" };
     juce::TextButton favoritePresetButton { "FAV" };
+    juce::TextButton humanRandomButton { "HUMAN" };
+    juce::TextButton freezeButton { "FREEZE" };
+    juce::TextButton smashButton { "SMASH" };
+    std::array<juce::TextButton, 4> saveSceneButtons {
+        juce::TextButton { "SAVE A" }, juce::TextButton { "SAVE B" },
+        juce::TextButton { "SAVE C" }, juce::TextButton { "SAVE D" }
+    };
+    std::array<juce::TextButton, 4> loadSceneButtons {
+        juce::TextButton { "A" }, juce::TextButton { "B" },
+        juce::TextButton { "C" }, juce::TextButton { "D" }
+    };
 
     juce::Label meterLabel { {}, "OUT" };
     juce::Label cpuLabel { {}, "CPU 0%" };
@@ -287,6 +302,12 @@ private:
     juce::Slider motionMacroSlider;
     juce::Slider chaosMacroSlider;
     juce::Slider spaceMacroSlider;
+    juce::Slider audioAwareSlider;
+    juce::Slider shapedChaosSlider;
+    juce::Slider antiNoiseSlider;
+    juce::Slider antiNoiseCeilingSlider;
+    juce::Slider freezeAmountSlider;
+    juce::Slider smashAmountSlider;
 
     std::array<juce::Slider*, sliderCount> sliders {
         &shakalSlider, &destroySlider, &crushSlider, &decimateSlider,
@@ -326,7 +347,9 @@ private:
         &reactiveSpectralSlider, &reactiveBassSlider, &reactiveHighSlider,
         &macroCurveSlider, &sceneMorphTimeSlider,
         &damageMacroSlider, &motionMacroSlider,
-        &chaosMacroSlider, &spaceMacroSlider
+        &chaosMacroSlider, &spaceMacroSlider,
+        &audioAwareSlider, &shapedChaosSlider, &antiNoiseSlider,
+        &antiNoiseCeilingSlider, &freezeAmountSlider, &smashAmountSlider
     };
 
     std::array<juce::String, sliderCount> sliderNames {
@@ -357,7 +380,9 @@ private:
         "FEEDBACK PITCH", "PITCH DAMAGE", "PITCH RANGE", "PITCH DRIFT",
         "REACTIVE AMOUNT", "REACTIVE TRANSIENT", "REACTIVE SPECTRAL",
         "REACTIVE BASS", "REACTIVE HIGH", "MACRO CURVE", "SCENE MORPH",
-        "DAMAGE", "MOTION", "CHAOS", "SPACE"
+        "DAMAGE", "MOTION", "CHAOS", "SPACE",
+        "AUDIO AWARE", "SHAPED CHAOS", "ANTI-NOISE",
+        "NOISE CEIL", "FREEZE", "SMASH"
     };
 
     std::vector<std::unique_ptr<
@@ -456,6 +481,8 @@ private:
     bool hasAState = false;
 
     std::array<bool, 24> favoritePresets {};
+    std::array<std::vector<float>, 4> sceneStates;
+    std::array<bool, 4> sceneStored {};
     std::unique_ptr<juce::FileChooser> presetFileChooser;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
