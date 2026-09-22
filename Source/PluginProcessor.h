@@ -48,6 +48,10 @@ public:
     void triggerGlitch() noexcept { performTrigger.store(2); }
     void triggerFreeze() noexcept { performTrigger.store(3); }
     void triggerFail() noexcept { performTrigger.store(4); }
+    void triggerCut() noexcept { performTrigger.store(5); }
+    void triggerReverse() noexcept { performTrigger.store(6); }
+    void triggerShatter() noexcept { performTrigger.store(7); }
+    void triggerMelt() noexcept { performTrigger.store(8); }
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -121,6 +125,7 @@ private:
 
     std::array<float, 2> alienPhase { 0.0f, 0.0f };
     std::array<float, 2> dcBlockState { 0.0f, 0.0f };
+    std::array<float, 2> outputGlueState { 0.0f, 0.0f };
     std::array<float, 2> performHeldSample { 0.0f, 0.0f };
     std::atomic<int> performTrigger { 0 };
     int performType = 0;
