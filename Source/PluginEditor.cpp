@@ -1911,6 +1911,18 @@ void ShakalizerAudioProcessorEditor::randomizeAll()
     setNorm("humanRandom", 0.42f + random.nextFloat() * 0.54f);
     setNorm("audioAware", 0.38f + random.nextFloat() * 0.58f);
     setNorm("chaosShape", 0.18f + random.nextFloat() * 0.72f);
+    setNorm("engineDepth", 0.36f + random.nextFloat() * 0.58f);
+    setNorm("intelligence", 0.42f + random.nextFloat() * 0.54f);
+    setNorm("bassFocus", 0.58f + random.nextFloat() * 0.34f);
+    setNorm("transientFocus", 0.48f + random.nextFloat() * 0.46f);
+    setNorm("presenceFocus", 0.42f + random.nextFloat() * 0.50f);
+    setNorm("groove", 0.35f + random.nextFloat() * 0.60f);
+    setNorm("modHumanize", 0.32f + random.nextFloat() * 0.62f);
+    setNorm("performanceIntensity", 0.45f + random.nextFloat() * 0.50f);
+    setNorm("outputGlue", 0.25f + random.nextFloat() * 0.62f);
+    setNorm("texture", 0.18f + random.nextFloat() * 0.72f);
+    setChoice("engineMode", random.nextInt(8));
+    setChoice("modCurve", random.nextInt(6));
     setChoice("glitchPattern", 7);
 
     // Auto Match and Smart stay available, but Smart is favored for random patches.
@@ -2232,6 +2244,18 @@ void ShakalizerAudioProcessorEditor::loadPreset(
     setNormalised(processor, "humanRandom", 0.68f);
     setNormalised(processor, "audioAware", 0.66f);
     setNormalised(processor, "chaosShape", 0.58f);
+    setNormalised(processor, "engineDepth", 0.64f);
+    setNormalised(processor, "intelligence", 0.72f);
+    setNormalised(processor, "bassFocus", 0.78f);
+    setNormalised(processor, "transientFocus", 0.72f);
+    setNormalised(processor, "presenceFocus", 0.68f);
+    setNormalised(processor, "groove", 0.72f);
+    setNormalised(processor, "modHumanize", 0.64f);
+    setNormalised(processor, "performanceIntensity", 0.75f);
+    setNormalised(processor, "outputGlue", 0.55f);
+    setNormalised(processor, "texture", 0.58f);
+    setChoice(processor, "engineMode", 0, 8);
+    setChoice(processor, "modCurve", 0, 6);
         setChoice(processor, "fftWindow", 0, 4);
         setChoice(processor, "pitchMode", 0, 4);
         setChoice(processor, "routingTopology", 0, 6);
