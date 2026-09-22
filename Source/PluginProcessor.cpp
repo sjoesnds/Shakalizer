@@ -969,7 +969,6 @@ void ShakalizerAudioProcessor::processBlock(
     const float grainPosition = clamp01(value("grainPosition"));
     const float grainSpray = clamp01(value("grainSpray"));
     const float grainReverse = clamp01(value("grainReverse"));
-    const float grainPan = clamp01(value("grainPan"));
     const float feedbackTime = clamp01(value("feedbackTime"));
     const float feedbackDiffusion = clamp01(value("feedbackDiffusion"));
     const float feedbackFreeze = clamp01(value("feedbackFreeze"));
@@ -984,7 +983,6 @@ void ShakalizerAudioProcessor::processBlock(
     const float reactiveBass = clamp01(value("reactiveBass"));
     const float reactiveHigh = clamp01(value("reactiveHigh"));
     const float macroCurve = clamp01(value("macroCurve"));
-    const float sceneMorphTime = clamp01(value("sceneMorphTime"));
     const float timelineSteps[8] {
         clamp01(value("timelineStep1")), clamp01(value("timelineStep2")),
         clamp01(value("timelineStep3")), clamp01(value("timelineStep4")),
