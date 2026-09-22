@@ -229,6 +229,18 @@ ShakalizerAudioProcessor::createParameterLayout()
     addFloat("audioAware", "Audio Aware", 0, 1, 0.001f, 0.66f);
     addFloat("chaosShape", "Chaos Shape", 0, 1, 0.001f, 0.58f);
 
+    // v10 final engine / intelligence / humanization controls.
+    addFloat("engineDepth", "Engine Depth", 0, 1, 0.001f, 0.64f);
+    addFloat("intelligence", "Intelligence", 0, 1, 0.001f, 0.72f);
+    addFloat("bassFocus", "Bass Focus", 0, 1, 0.001f, 0.78f);
+    addFloat("transientFocus", "Transient Focus", 0, 1, 0.001f, 0.72f);
+    addFloat("presenceFocus", "Presence Focus", 0, 1, 0.001f, 0.68f);
+    addFloat("groove", "Groove", 0, 1, 0.001f, 0.72f);
+    addFloat("modHumanize", "Mod Humanize", 0, 1, 0.001f, 0.64f);
+    addFloat("performanceIntensity", "Performance Intensity", 0, 1, 0.001f, 0.75f);
+    addFloat("outputGlue", "Output Glue", 0, 1, 0.001f, 0.55f);
+    addFloat("texture", "Texture", 0, 1, 0.001f, 0.58f);
+
     p.push_back(
         std::make_unique<
             juce::AudioParameterChoice>(
@@ -449,6 +461,23 @@ ShakalizerAudioProcessor::createParameterLayout()
                     "Melt", "Broken", "Chaos"
                 },
                 0));
+
+    p.push_back(
+        std::make_unique<juce::AudioParameterChoice>(
+            "engineMode", "Engine Mode",
+            juce::StringArray {
+                "Digital", "Buffer", "Memory", "Corrupt",
+                "Machine", "Liquid", "Void", "Hybrid"
+            },
+            0));
+
+    p.push_back(
+        std::make_unique<juce::AudioParameterChoice>(
+            "modCurve", "Mod Curve",
+            juce::StringArray {
+                "Linear", "Smooth", "Expo", "Steps", "Saturate", "Pulse"
+            },
+            0));
 
     const juce::StringArray modSources {
         "Off", "LFO", "Envelope",
@@ -1019,6 +1048,16 @@ void ShakalizerAudioProcessor::processBlock(
     const float humanRandom = clamp01(value("humanRandom"));
     const float audioAware = clamp01(value("audioAware"));
     const float chaosShape = clamp01(value("chaosShape"));
+    const float engineDepth = clamp01(value("engineDepth"));
+    const float intelligence = clamp01(value("intelligence"));
+    const float bassFocus = clamp01(value("bassFocus"));
+    const float transientFocus = clamp01(value("transientFocus"));
+    const float presenceFocus = clamp01(value("presenceFocus"));
+    const float groove = clamp01(value("groove"));
+    const float modHumanize = clamp01(value("modHumanize"));
+    const float performanceIntensity = clamp01(value("performanceIntensity"));
+    const float outputGlue = clamp01(value("outputGlue"));
+    const float texture = clamp01(value("texture"));
     float damageMacro = clamp01(value("damageMacro"));
     float motionMacro = clamp01(value("motionMacro"));
     float chaosMacro = clamp01(value("chaosMacro"));
@@ -1145,6 +1184,11 @@ void ShakalizerAudioProcessor::processBlock(
             apvts,
             "liveScene",
             0);
+
+    const int engineMode =
+        choiceIndex(apvts, "engineMode", 0);
+    const int modCurve =
+        choiceIndex(apvts, "modCurve", 0);
 
     // Macro mapping.
     const float modeScale =
@@ -1558,7 +1602,7 @@ void ShakalizerAudioProcessor::processBlock(
     const int requestedPerformTrigger = performTrigger.exchange(0);
     if (requestedPerformTrigger > 0)
     {
-        performType = juce::jlimit(1, 4, requestedPerformTrigger);
+        performType = juce::jlimit(1, 8, requestedPerformTrigger);
         performRemaining = static_cast<int>(0.14 * currentSampleRate);
         for (int ch = 0; ch < channels; ++ch)
             performHeldSample[static_cast<size_t>(ch)] =
@@ -2124,8 +2168,46 @@ void ShakalizerAudioProcessor::processBlock(
                         break;
                 }
 
-                const float signedSource =
+                float signedSource =
                     source * 2.0f - 1.0f;
+
+                switch (modCurve)
+                {
+                    case 1:
+                        signedSource *=
+                            0.78f + 0.22f * std::abs(signedSource);
+                        break;
+                    case 2:
+                        signedSource = std::copysign(
+                            std::pow(std::abs(signedSource),
+                                     0.58f + 0.90f * (1.0f - modHumanize)),
+                            signedSource);
+                        break;
+                    case 3:
+                        signedSource =
+                            std::round((signedSource + 1.0f) * 3.5f) / 3.5f - 1.0f;
+                        break;
+                    case 4:
+                        signedSource =
+                            std::tanh(signedSource * (1.5f + modHumanize * 3.0f));
+                        break;
+                    case 5:
+                        signedSource =
+                            std::sin(signedSource * pi * 0.5f);
+                        break;
+                    default:
+                        break;
+                }
+
+                if (modHumanize > 0.001f
+                    && std::abs(modAmounts[slot]) > 0.001f)
+                {
+                    signedSource +=
+                        (nextRandom() * 2.0f - 1.0f)
+                        * modHumanize * groove * 0.035f;
+                    signedSource =
+                        juce::jlimit(-1.0f, 1.0f, signedSource);
+                }
 
                 const float modTarget =
                     juce::jlimit(
@@ -2196,7 +2278,8 @@ void ShakalizerAudioProcessor::processBlock(
             {
                 const float pulse =
                     performFade
-                    * (1.0f - 0.25f * performFade);
+                    * (1.0f - 0.25f * performFade)
+                    * (0.65f + 0.85f * performanceIntensity);
 
                 if (performType == 1)
                 {
@@ -2239,6 +2322,20 @@ void ShakalizerAudioProcessor::processBlock(
                         juce::jlimit(
                             0.0f, 1.0f,
                             localGlitch + pulse * 0.42f);
+                }
+                else if (performType == 5) // Cut.
+                    wet = juce::jmap(pulse * 0.90f, wet, 0.0f);
+                else if (performType == 6) // Reverse.
+                    wet = juce::jmap(pulse * 0.88f, wet, glitchValue[index]);
+                else if (performType == 7) // Shatter.
+                {
+                    localShatter = juce::jlimit(0.0f, 1.0f, localShatter + pulse * 0.56f);
+                    localFold = juce::jlimit(0.0f, 1.0f, localFold + pulse * 0.24f);
+                }
+                else if (performType == 8) // Melt.
+                {
+                    wet = juce::jmap(pulse * 0.62f, wet, heldSample[index]);
+                    wet = std::tanh(wet * (1.0f + pulse * 2.0f));
                 }
             }
 
@@ -2514,6 +2611,48 @@ void ShakalizerAudioProcessor::processBlock(
                              * instantaneousLow
                              * 0.22f)
                         + audioAware * presence * 0.20f);
+            }
+
+            // v10 Audio Intelligence.
+            if (intelligence > 0.0001f)
+            {
+                const float lowPresence =
+                    juce::jlimit(0.0f, 1.0f, std::abs(low) * 2.6f);
+                const float highPresence =
+                    juce::jlimit(0.0f, 1.0f,
+                                 (std::abs(high) + std::abs(air)) * 2.4f);
+                const float focus =
+                    juce::jlimit(
+                        0.0f, 1.0f,
+                        lowPresence * bassFocus * 0.30f
+                        + transientAmount * transientFocus * 0.34f
+                        + highPresence * presenceFocus * 0.36f);
+
+                dynamicIntensity =
+                    clamp01(
+                        dynamicIntensity * (0.78f + intelligence * 0.22f)
+                        + focus * intelligence * 0.18f);
+
+                localDestroy =
+                    clamp01(
+                        localDestroy
+                        * juce::jmap(
+                            intelligence * bassFocus * lowPresence,
+                            1.0f, 0.68f));
+                localCrush =
+                    clamp01(
+                        localCrush
+                        * juce::jmap(
+                            intelligence * bassFocus * lowPresence,
+                            1.0f, 0.72f));
+                localGlitch =
+                    clamp01(
+                        localGlitch
+                        * (0.76f + 0.34f
+                           * juce::jlimit(
+                               0.0f, 1.0f,
+                               transientAmount * transientFocus
+                               + highPresence * presenceFocus)));
             }
 
             bandPeak[0] =
@@ -2903,6 +3042,80 @@ void ShakalizerAudioProcessor::processBlock(
 
                 default:
                     break;
+            }
+
+            // v10 Shakal Engine 2.0.
+            if (engineDepth > 0.0001f)
+            {
+                const float e = juce::jlimit(
+                    0.0f, 1.0f,
+                    engineDepth * (0.28f + 0.72f * dynamicIntensity));
+
+                switch (engineMode)
+                {
+                    case 1:
+                        wet = juce::jmap(
+                            e * 0.46f, wet,
+                            0.52f * wet + 0.48f * glitchValue[index]);
+                        break;
+                    case 2:
+                        wet = juce::jmap(
+                            e * 0.62f, wet,
+                            0.72f * heldSample[index]
+                            + 0.28f * previousHeldSample[index]);
+                        break;
+                    case 3:
+                    {
+                        const float levels = 16.0f + (1.0f - e) * 48.0f;
+                        const float bitField = std::round(wet * levels) / levels;
+                        const float warp = std::sin(
+                            (bitField * 4.0f + movementBipolar * 2.0f)
+                            * (1.0f + 6.0f * e));
+                        wet = juce::jmap(
+                            e * 0.38f, wet,
+                            bitField * (0.72f + 0.28f * warp));
+                        break;
+                    }
+                    case 4:
+                        wet = waveFold(wet, e * 0.36f);
+                        wet = shapedSample(wet, e * 6.0f, e * 0.45f);
+                        break;
+                    case 5:
+                        wet = juce::jmap(
+                            e * 0.54f, wet,
+                            0.58f * wet + 0.42f * heldSample[index]);
+                        wet = std::tanh(wet * (1.0f + e * 1.2f));
+                        break;
+                    case 6:
+                    {
+                        const float gate =
+                            0.18f + 0.82f * juce::jlimit(
+                                0.0f, 1.0f,
+                                transientAmount * 0.72f
+                                + high * high * e * 2.0f
+                                + 0.25f * (0.5f + 0.5f * movementBipolar));
+                        wet *= 1.0f - e * (1.0f - gate) * 0.78f;
+                        break;
+                    }
+                    case 7:
+                        wet = juce::jmap(
+                            e * 0.30f, wet,
+                            0.5f * wet + 0.5f * glitchValue[index]);
+                        wet = waveFold(wet, e * 0.22f);
+                        wet = std::tanh(wet * (1.0f + e * 1.25f));
+                        break;
+                    default:
+                        if (texture > 0.0001f)
+                        {
+                            const float levels =
+                                18.0f + (1.0f - texture) * 90.0f;
+                            wet = juce::jmap(
+                                texture * e * 0.24f,
+                                wet,
+                                std::round(wet * levels) / levels);
+                        }
+                        break;
+                }
             }
 
             if (feedback > 0.0001f)
@@ -3362,7 +3575,8 @@ void ShakalizerAudioProcessor::processBlock(
                       * (0.45f + 0.55f * patternGate);
 
             const float humanTiming =
-                0.72f + humanRandom * (0.18f + transientAmount * 0.42f);
+                (0.72f + humanRandom * (0.18f + transientAmount * 0.42f))
+                * (0.78f + 0.22f * groove);
             triggerChance =
                 juce::jlimit(
                     0.0f,
@@ -4020,15 +4234,34 @@ void ShakalizerAudioProcessor::processBlock(
                 dcAlpha * (x - dcBlockState[static_cast<size_t>(ch)]);
             const float dcClean =
                 x - dcBlockState[static_cast<size_t>(ch)];
+
+            x = juce::jmap(
+                antiNoise * antiDc,
+                x,
+                dcClean);
+
             const float guardStrength =
                 0.26f
                 + smooth * 0.62f
-                + antiNoise * antiPeak * 0.80f;
+                + antiNoise * antiPeak * 0.80f
+                + outputGlue * 0.18f;
 
             x =
                 softCeiling(
                     x,
                     guardStrength);
+
+            const float glueAlpha =
+                0.006f + outputGlue * 0.030f;
+            outputGlueState[static_cast<size_t>(ch)] +=
+                glueAlpha
+                * (x - outputGlueState[static_cast<size_t>(ch)]);
+
+            x = juce::jmap(
+                outputGlue * 0.34f,
+                x,
+                0.72f * x
+                + 0.28f * outputGlueState[static_cast<size_t>(ch)]);
 
             if (!std::isfinite(x))
                 x = 0.0f;
