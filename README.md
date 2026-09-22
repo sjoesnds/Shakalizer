@@ -1,4 +1,4 @@
-# Shakalizer v3.0
+# Shakalizer v7.0
 
 Shakalizer is a VST3 digital-destruction effect built around controlled digital damage instead of generic harsh distortion.
 
@@ -187,3 +187,19 @@ The factory bank is expanded to 24 named patches spanning digital bass, drums, g
 
 ### Compatibility
 Existing parameter identifiers are kept intact. The new V6 parameters are appended to the parameter set so existing V5 projects can retain their original controls.
+
+
+## v7 Intelligent Destruction
+
+V7 adds an intelligent performance layer on top of the existing destruction engine:
+
+- **Audio Aware** follows transient, body, low, mid, high and air energy so destruction reacts to actual material instead of applying identical intensity everywhere.
+- **Shaped Chaos** creates deterministic, tempo-aware instability rather than sample-by-sample random noise.
+- **Anti-Noise** is a post safety stage with DC removal, high-frequency cleanup, transient smoothing and an adjustable safety ceiling.
+- **FREEZE** captures a short recent fragment and repeatedly holds it as a playable destruction gesture.
+- **SMASH** creates a short controlled destruction burst with dynamic quantization and saturation.
+- **HUMAN** randomization builds sparse rhythmic patterns and coherent parameter relationships instead of pure randomization.
+- **Scenes A-D** are fast editor snapshots for live sound changes and A/B-style experimentation.
+- **INTEL** is a compact UI page exposing the new controls without expanding the overall workstation layout.
+
+V7 keeps the parameter list append-only so existing V6 state identifiers remain intact.
