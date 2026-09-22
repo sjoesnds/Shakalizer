@@ -1,6 +1,5 @@
 #include "PluginProcessor.h"
-// V6 CI validation branch: source unchanged apart from this marker.
-
+// V6 CI validation marker.
 #include "PluginEditor.h"
 
 namespace
@@ -895,11 +894,11 @@ void ShakalizerAudioProcessor::processBlock(
         clamp01(value("transient"));
     const float body =
         clamp01(value("body"));
-    const float stereo =
+    float stereo =
         clamp01(value("stereo"));
-    const float movement =
+    float movement =
         clamp01(value("movement"));
-    const float unstable =
+    float unstable =
         clamp01(value("unstable"));
     const float alien =
         clamp01(value("alien"));
@@ -974,10 +973,10 @@ void ShakalizerAudioProcessor::processBlock(
     const float grainSize = clamp01(value("grainSize"));
     const float grainPitch = clamp01(value("grainPitch"));
     const float grainJitter = clamp01(value("grainJitter"));
-    const float feedback = clamp01(value("feedback"));
+    float feedback = clamp01(value("feedback"));
     const float feedbackTone = clamp01(value("feedbackTone"));
     const float feedbackDrive = clamp01(value("feedbackDrive"));
-    const float pitchChaos = clamp01(value("pitchChaos"));
+    float pitchChaos = clamp01(value("pitchChaos"));
     const float timelineMix = clamp01(value("timelineMix"));
 
     const float fftSpread = clamp01(value("fftSpread"));
@@ -988,9 +987,9 @@ void ShakalizerAudioProcessor::processBlock(
     const float grainSpray = clamp01(value("grainSpray"));
     const float grainReverse = clamp01(value("grainReverse"));
     const float feedbackTime = clamp01(value("feedbackTime"));
-    const float feedbackDiffusion = clamp01(value("feedbackDiffusion"));
+    float feedbackDiffusion = clamp01(value("feedbackDiffusion"));
     const float feedbackFreeze = clamp01(value("feedbackFreeze"));
-    const float feedbackSpread = clamp01(value("feedbackSpread"));
+    float feedbackSpread = clamp01(value("feedbackSpread"));
     const float feedbackPitch = clamp01(value("feedbackPitch"));
     const float pitchDamage = clamp01(value("pitchDamage"));
     const float pitchRange = clamp01(value("pitchRange"));
