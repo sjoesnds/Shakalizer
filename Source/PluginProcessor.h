@@ -44,6 +44,9 @@ public:
     float getGlitchActivity() const noexcept { return glitchActivity.load(); }
     float getModulationActivity() const noexcept { return modulationActivity.load(); }
 
+    void triggerFreeze() noexcept { freezeTrigger.fetch_add(1); }
+    void triggerSmash() noexcept { smashTrigger.fetch_add(1); }
+
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
@@ -79,6 +82,14 @@ private:
     std::array<int, 2> currentHoldLength { 1, 1 };
     std::array<float, 2> heldSample { 0.0f, 0.0f };
     std::array<float, 2> previousHeldSample { 0.0f, 0.0f };
+
+    std::array<int, 2> manualFreezeRemaining { 0, 0 };
+    std::array<int, 2> manualFreezeReadIndex { 0, 0 };
+    std::array<int, 2> manualSmashRemaining { 0, 0 };
+    std::array<int, 2> manualSmashAge { 0, 0 };
+    std::array<float, 2> antiDcPreviousX { 0.0f, 0.0f };
+    std::array<float, 2> antiDcPreviousY { 0.0f, 0.0f };
+    std::array<float, 2> antiNoisePrevious { 0.0f, 0.0f };
 
     std::array<float, 2> splitLow1 { 0.0f, 0.0f };
     std::array<float, 2> splitLow2 { 0.0f, 0.0f };
@@ -143,6 +154,8 @@ private:
     std::atomic<float> modulationActivity { 0.0f };
     std::atomic<float> cpuLoad { 0.0f };
     std::atomic<float> meterLevel { 0.0f };
+    std::atomic<int> freezeTrigger { 0 };
+    std::atomic<int> smashTrigger { 0 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ShakalizerAudioProcessor)
 };

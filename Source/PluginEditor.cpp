@@ -717,6 +717,21 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         randomizeAll();
     };
 
+    humanRandomButton.onClick = [this]
+    {
+        humanizeRandom();
+    };
+
+    freezeButton.onClick = [this]
+    {
+        processor.triggerFreeze();
+    };
+
+    smashButton.onClick = [this]
+    {
+        processor.triggerSmash();
+    };
+
     savePresetButton.onClick = [this]
     {
         savePresetToFile();
@@ -726,6 +741,19 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
     {
         loadPresetFromFile();
     };
+
+    for (int i = 0; i < 4; ++i)
+    {
+        saveSceneButtons[static_cast<size_t>(i)].onClick = [this, i]
+        {
+            storeScene(i);
+        };
+
+        loadSceneButtons[static_cast<size_t>(i)].onClick = [this, i]
+        {
+            recallScene(i);
+        };
+    }
 
     favoritePresetButton.onClick = [this]
     {
@@ -779,6 +807,9 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         &autoMatchButton,
         &smartButton,
         &randomAllButton,
+        &humanRandomButton,
+        &freezeButton,
+        &smashButton,
         &savePresetButton,
         &loadPresetButton,
         &favoritePresetButton,
@@ -798,6 +829,21 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
 
         addAndMakeVisible(
             *button);
+    }
+
+    for (int i = 0; i < 4; ++i)
+    {
+        saveSceneButtons[static_cast<size_t>(i)].setColour(
+            juce::TextButton::textColourOnId, text);
+        saveSceneButtons[static_cast<size_t>(i)].setColour(
+            juce::TextButton::textColourOffId, text);
+        loadSceneButtons[static_cast<size_t>(i)].setColour(
+            juce::TextButton::textColourOnId, text);
+        loadSceneButtons[static_cast<size_t>(i)].setColour(
+            juce::TextButton::textColourOffId, text);
+
+        addAndMakeVisible(saveSceneButtons[static_cast<size_t>(i)]);
+        addAndMakeVisible(loadSceneButtons[static_cast<size_t>(i)]);
     }
 
     meterLabel.setFont(
@@ -869,7 +915,9 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         "pitchDrift", "reactiveAmount", "reactiveTransient",
         "reactiveSpectral", "reactiveBass", "reactiveHigh",
         "macroCurve", "sceneMorphTime",
-        "damageMacro", "motionMacro", "chaosMacro", "spaceMacro"
+        "damageMacro", "motionMacro", "chaosMacro", "spaceMacro",
+        "audioAware", "shapedChaos", "antiNoise",
+        "antiNoiseCeiling", "freezeAmount", "smashAmount"
     }};
 
     for (int i = 0;
@@ -1128,8 +1176,8 @@ void ShakalizerAudioProcessorEditor::resized()
 
     for (size_t i = 0; i < pageButtons.size(); ++i)
     {
-        const int x = 30 + static_cast<int>(i) * 104;
-        pageButtons[i].setBounds(x, 112, 98, 24);
+        const int x = 28 + static_cast<int>(i) * 94;
+        pageButtons[i].setBounds(x, 112, 88, 24);
         pageButtons[i].setToggleState(
             static_cast<int>(i) == currentPage,
             juce::dontSendNotification);
@@ -1191,6 +1239,35 @@ void ShakalizerAudioProcessorEditor::resized()
         }
     }
 
+    const bool intelPage = currentPage == 8;
+
+    humanRandomButton.setVisible(intelPage);
+    freezeButton.setVisible(intelPage);
+    smashButton.setVisible(intelPage);
+
+    for (int i = 0; i < 4; ++i)
+    {
+        auto& saveButton = saveSceneButtons[static_cast<size_t>(i)];
+        auto& loadButton = loadSceneButtons[static_cast<size_t>(i)];
+
+        saveButton.setVisible(intelPage);
+        loadButton.setVisible(intelPage);
+
+        if (intelPage)
+        {
+            const int x = 30 + i * 114;
+            saveButton.setBounds(x, contentTop + 80, 72, 26);
+            loadButton.setBounds(x + 76, contentTop + 80, 34, 26);
+        }
+    }
+
+    if (intelPage)
+    {
+        humanRandomButton.setBounds(486, contentTop + 80, 86, 26);
+        freezeButton.setBounds(578, contentTop + 80, 74, 26);
+        smashButton.setBounds(658, contentTop + 80, 74, 26);
+    }
+
     // On MOD page, the eight source/destination rows use the matching
     // modulation amount sliders: 1-4 and 5-8 are separated in the parameter list.
     if (modPage)
@@ -1240,7 +1317,7 @@ void ShakalizerAudioProcessorEditor::setPage(int page)
 
     static const char* names[] {
         "CORE", "GLITCH", "SPECTRAL", "MOD",
-        "GRANULAR", "FEEDBACK", "REACTIVE", "MACRO"
+        "GRANULAR", "FEEDBACK", "REACTIVE", "MACRO", "INTEL"
     };
 
     pageLabel.setText(
@@ -1300,6 +1377,9 @@ bool ShakalizerAudioProcessorEditor::sliderBelongsToPage(
             return i == 0
                 || i == 17
                 || (i >= 101 && i <= 104);
+
+        case 8: // Intelligent destruction.
+            return i >= 105 && i <= 110;
 
         default:
             return false;
@@ -1767,6 +1847,12 @@ void ShakalizerAudioProcessorEditor::randomizeAll()
     setNorm("chaosMacro", 0.05f + random.nextFloat() * 0.70f);
     setNorm("spaceMacro", random.nextFloat() * 0.58f);
     setChoice("glitchPattern", 7);
+    setNorm("audioAware", 0.45f + random.nextFloat() * 0.48f);
+    setNorm("shapedChaos", 0.08f + random.nextFloat() * 0.62f);
+    setNorm("antiNoise", 0.40f + random.nextFloat() * 0.48f);
+    setNorm("antiNoiseCeiling", 0.34f + random.nextFloat() * 0.50f);
+    setNorm("freezeAmount", 0.35f + random.nextFloat() * 0.55f);
+    setNorm("smashAmount", 0.30f + random.nextFloat() * 0.60f);
 
     // Auto Match and Smart stay available, but Smart is favored for random patches.
     setNorm(
@@ -1791,6 +1877,96 @@ void ShakalizerAudioProcessorEditor::randomizeAll()
             ("timelineStep" + juce::String(i)).toRawUTF8(),
             hit);
     }
+
+    presetBox.setSelectedId(
+        1,
+        juce::dontSendNotification);
+}
+
+void ShakalizerAudioProcessorEditor::humanizeRandom()
+{
+    randomizeAll();
+
+    static juce::Random random;
+
+    setNormalised(processor, "smart", 1.0f);
+    setNormalised(processor, "autoMatch", 1.0f);
+
+    setNormalised(processor, "audioAware",
+                  0.72f + random.nextFloat() * 0.22f);
+    setNormalised(processor, "shapedChaos",
+                  0.16f + random.nextFloat() * 0.30f);
+    setNormalised(processor, "antiNoise",
+                  0.50f + random.nextFloat() * 0.28f);
+    setNormalised(processor, "antiNoiseCeiling",
+                  0.38f + random.nextFloat() * 0.32f);
+    setNormalised(processor, "freezeAmount",
+                  0.54f + random.nextFloat() * 0.30f);
+    setNormalised(processor, "smashAmount",
+                  0.44f + random.nextFloat() * 0.34f);
+
+    setChoice(processor, "glitchPattern",
+              random.nextFloat() < 0.5f ? 3 : 6, 7);
+
+    setNormalised(processor, "glitchDensity",
+                  0.22f + random.nextFloat() * 0.30f);
+    setNormalised(processor, "glitchProbability",
+                  0.18f + random.nextFloat() * 0.32f);
+    setNormalised(processor, "timelineMix",
+                  0.52f + random.nextFloat() * 0.30f);
+
+    for (int i = 1; i <= 8; ++i)
+    {
+        const bool mainHit =
+            i == 1 || i == 5
+            || (i == 3 && random.nextFloat() > 0.45f);
+
+        const float value =
+            mainHit
+                ? 0.58f + random.nextFloat() * 0.34f
+                : (random.nextFloat() > 0.80f
+                    ? random.nextFloat() * 0.24f
+                    : 0.0f);
+
+        setNormalised(
+            processor,
+            ("timelineStep" + juce::String(i)).toRawUTF8(),
+            value);
+    }
+
+    setChoice(processor, "characterMode",
+              1 + random.nextInt(3), 10);
+
+    presetBox.setSelectedId(
+        1,
+        juce::dontSendNotification);
+}
+
+void ShakalizerAudioProcessorEditor::storeScene(int index)
+{
+    if (index < 0
+        || index >= static_cast<int>(sceneStates.size()))
+        return;
+
+    captureState(
+        sceneStates[static_cast<size_t>(index)]);
+
+    sceneStored[
+        static_cast<size_t>(index)] = true;
+}
+
+void ShakalizerAudioProcessorEditor::recallScene(int index)
+{
+    if (index < 0
+        || index >= static_cast<int>(sceneStates.size()))
+        return;
+
+    if (!sceneStored[
+            static_cast<size_t>(index)])
+        return;
+
+    applyState(
+        sceneStates[static_cast<size_t>(index)]);
 
     presetBox.setSelectedId(
         1,
@@ -1961,6 +2137,12 @@ void ShakalizerAudioProcessorEditor::loadPreset(
         setNormalised(processor, "spectralFreezeAmount", 0.0f);
         setNormalised(processor, "spectralBits", 0.08f);
         setNormalised(processor, "spectralRing", 0.0f);
+        setNormalised(processor, "audioAware", 0.62f);
+        setNormalised(processor, "shapedChaos", 0.34f);
+        setNormalised(processor, "antiNoise", 0.54f);
+        setNormalised(processor, "antiNoiseCeiling", 0.50f);
+        setNormalised(processor, "freezeAmount", 0.66f);
+        setNormalised(processor, "smashAmount", 0.58f);
         setNormalised(
             processor,
             "modRate",

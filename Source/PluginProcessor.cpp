@@ -221,6 +221,14 @@ ShakalizerAudioProcessor::createParameterLayout()
     addFloat("chaosMacro", "Chaos", 0, 1, 0.001f, 0.0f);
     addFloat("spaceMacro", "Space", 0, 1, 0.001f, 0.0f);
 
+    // v7 intelligent destruction.
+    addFloat("audioAware", "Audio Aware", 0, 1, 0.001f, 0.62f);
+    addFloat("shapedChaos", "Shaped Chaos", 0, 1, 0.001f, 0.34f);
+    addFloat("antiNoise", "Anti Noise", 0, 1, 0.001f, 0.54f);
+    addFloat("antiNoiseCeiling", "Anti Noise Ceiling", 0, 1, 0.001f, 0.50f);
+    addFloat("freezeAmount", "Freeze Amount", 0, 1, 0.001f, 0.66f);
+    addFloat("smashAmount", "Smash Amount", 0, 1, 0.001f, 0.58f);
+
     p.push_back(
         std::make_unique<
             juce::AudioParameterChoice>(
@@ -578,6 +586,15 @@ void ShakalizerAudioProcessor::prepareToPlay(
     glitchEventAge.fill(0);
     glitchBuffer = {};
     glitchWriteIndex = 0;
+    manualFreezeRemaining.fill(0);
+    manualFreezeReadIndex.fill(0);
+    manualSmashRemaining.fill(0);
+    manualSmashAge.fill(0);
+    antiDcPreviousX.fill(0.0f);
+    antiDcPreviousY.fill(0.0f);
+    antiNoisePrevious.fill(0.0f);
+    freezeTrigger.store(0);
+    smashTrigger.store(0);
 
     spectralFreeze.fill(0.0f);
     modSmoothState.fill(0.0f);
@@ -1003,6 +1020,12 @@ void ShakalizerAudioProcessor::processBlock(
     float motionMacro = clamp01(value("motionMacro"));
     float chaosMacro = clamp01(value("chaosMacro"));
     float spaceMacro = clamp01(value("spaceMacro"));
+    const float audioAware = clamp01(value("audioAware"));
+    const float shapedChaos = clamp01(value("shapedChaos"));
+    const float antiNoise = clamp01(value("antiNoise"));
+    const float antiNoiseCeiling = clamp01(value("antiNoiseCeiling"));
+    const float freezeAmount = clamp01(value("freezeAmount"));
+    const float smashAmount = clamp01(value("smashAmount"));
     const float timelineSteps[8] {
         clamp01(value("timelineStep1")), clamp01(value("timelineStep2")),
         clamp01(value("timelineStep3")), clamp01(value("timelineStep4")),
@@ -1041,6 +1064,39 @@ void ShakalizerAudioProcessor::processBlock(
         value("autoMatch") > 0.5f;
     const bool smart =
         value("smart") > 0.5f;
+
+    const bool freezeRequested = freezeTrigger.exchange(0) > 0;
+    const bool smashRequested = smashTrigger.exchange(0) > 0;
+
+    if (freezeRequested)
+    {
+        const int length = juce::jlimit(
+            256,
+            static_cast<int>(currentSampleRate * 0.70),
+            static_cast<int>(std::round(
+                currentSampleRate * (0.05 + freezeAmount * 0.42))));
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            manualFreezeRemaining[static_cast<size_t>(ch)] = length;
+            manualFreezeReadIndex[static_cast<size_t>(ch)] =
+                (glitchWriteIndex - 32 - static_cast<int>(
+                    nextRandom() * (192.0f + freezeAmount * 1800.0f)) + 16384) & 16383;
+        }
+    }
+
+    if (smashRequested)
+    {
+        const int length = juce::jlimit(
+            128,
+            static_cast<int>(currentSampleRate * 0.26),
+            static_cast<int>(std::round(
+                currentSampleRate * (0.03 + smashAmount * 0.14))));
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            manualSmashRemaining[static_cast<size_t>(ch)] = length;
+            manualSmashAge[static_cast<size_t>(ch)] = 0;
+        }
+    }
 
     const int mode =
         choiceIndex(
@@ -2147,8 +2203,55 @@ void ShakalizerAudioProcessor::processBlock(
                     + bandPeak[0] * reactiveBass
                     + bandPeak[3] * reactiveHigh);
 
-            float dynamicIntensity =
-                intensity;
+            const float lowEnergy = clamp01(std::abs(low) * 3.0f);
+            const float midEnergy = clamp01(std::abs(mid) * 3.2f);
+            const float highEnergy = clamp01(std::abs(high) * 3.2f);
+            const float airEnergy = clamp01(std::abs(air) * 4.0f);
+            const float contentActivity = clamp01(
+                transientAmount * 0.48f
+                + bodyAmount * 0.18f
+                + midEnergy * 0.18f
+                + highEnergy * 0.10f
+                + airEnergy * 0.06f);
+
+            float dynamicIntensity = intensity;
+
+            if (audioAware > 0.0001f)
+            {
+                const float adaptiveShape =
+                    juce::jmap(audioAware, 0.5f, 1.0f, contentActivity, 1.0f);
+                dynamicIntensity = juce::jlimit(
+                    0.0f, 1.0f,
+                    dynamicIntensity *
+                    (0.74f + 0.52f * adaptiveShape));
+
+                localDestroy = clamp01(
+                    localDestroy + audioAware *
+                    (0.025f + transientAmount * 0.12f));
+                localGlitch = clamp01(
+                    localGlitch + audioAware *
+                    (0.02f + transientAmount * 0.18f));
+                localCrush *=
+                    1.0f - audioAware * lowEnergy * 0.24f;
+            }
+
+            if (shapedChaos > 0.0001f)
+            {
+                const float chaosClock =
+                    0.5f + 0.5f * std::sin(
+                        syncPhase * (2.0f + shapedChaos * 10.0f)
+                        + movementPhase * 0.37f
+                        + static_cast<float>(index) * 0.81f);
+                const float chaosPulse =
+                    std::pow(
+                        juce::jlimit(0.0f, 1.0f, chaosClock),
+                        0.85f + shapedChaos * 2.8f);
+                const float chaosGate = shapedChaos * chaosPulse *
+                    (0.30f + 0.70f * transientAmount + 0.25f * contentActivity);
+                dynamicIntensity = clamp01(dynamicIntensity + chaosGate * 0.10f);
+                localGlitch = clamp01(localGlitch + chaosGate * 0.28f);
+                localShatter = clamp01(localShatter + chaosGate * 0.16f);
+            }
 
             if (reactiveAmount > 0.0001f)
             {
@@ -3440,6 +3543,38 @@ void ShakalizerAudioProcessor::processBlock(
                 --glitchRemaining[index];
             }
 
+            // v7 performance triggers: manual FREEZE and SMASH.
+            if (manualFreezeRemaining[index] > 0)
+            {
+                const float frozen =
+                    glitchBuffer[index][static_cast<size_t>(
+                        manualFreezeReadIndex[index] & 16383)];
+                const float blend = 0.38f + freezeAmount * 0.58f;
+                wet = juce::jmap(blend, wet, frozen);
+                --manualFreezeRemaining[index];
+            }
+
+            if (manualSmashRemaining[index] > 0)
+            {
+                const float p = 1.0f -
+                    static_cast<float>(manualSmashRemaining[index]) /
+                    static_cast<float>(juce::jmax(1, static_cast<int>(currentSampleRate *
+                        (0.03 + smashAmount * 0.14)))));
+                const float pulse =
+                    std::sin(juce::jlimit(0.0f, 1.0f, p) * pi);
+                const float bits =
+                    juce::jmax(3.0f, 15.0f - smashAmount * 11.0f);
+                const float smashed =
+                    std::tanh(std::round(wet * bits) / bits *
+                              (1.0f + smashAmount * 6.0f));
+                wet = juce::jmap(
+                    juce::jlimit(0.0f, 1.0f, pulse * (0.35f + smashAmount * 0.75f)),
+                    wet,
+                    smashed);
+                ++manualSmashAge[index];
+                --manualSmashRemaining[index];
+            }
+
             const float cutoffMod =
                 localFilter
                 + movementBipolar
@@ -3838,11 +3973,33 @@ void ShakalizerAudioProcessor::processBlock(
                         0,
                         x);
 
+            if (antiNoise > 0.0001f)
+            {
+                const float hpR = 0.995f + (1.0f - antiNoise) * 0.004f;
+                const float y = x
+                    - antiDcPreviousX[static_cast<size_t>(ch)]
+                    + hpR * antiDcPreviousY[static_cast<size_t>(ch)];
+                antiDcPreviousX[static_cast<size_t>(ch)] = x;
+                antiDcPreviousY[static_cast<size_t>(ch)] = y;
+                x = y;
+
+                const float smoothing = antiNoise * 0.16f;
+                x = antiNoisePrevious[static_cast<size_t>(ch)]
+                    + (x - antiNoisePrevious[static_cast<size_t>(ch)])
+                      * (1.0f - smoothing);
+                antiNoisePrevious[static_cast<size_t>(ch)] = x;
+            }
+            else
+            {
+                antiNoisePrevious[static_cast<size_t>(ch)] = x;
+            }
+
             x =
                 softCeiling(
                     x,
                     0.26f
-                    + smooth * 0.62f);
+                    + smooth * 0.62f
+                    + antiNoiseCeiling * 0.55f);
 
             if (!std::isfinite(x))
                 x = 0.0f;
