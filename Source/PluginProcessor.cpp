@@ -2182,24 +2182,6 @@ void ShakalizerAudioProcessor::processBlock(
             localGlitch =
                 clamp01(localGlitch);
 
-            if (audioAware > 0.0001f)
-            {
-                const float instantaneousLow = juce::jlimit(0.0f, 1.0f, std::abs(low) * 2.8f);
-                const float instantaneousHigh = juce::jlimit(0.0f, 1.0f, (std::abs(high) + std::abs(air)) * 2.2f);
-                const float presence = juce::jlimit(
-                    0.0f,
-                    1.0f,
-                    instantaneousHigh * 0.68f
-                    + transientAmount * 0.52f
-                    + bodyAmount * 0.18f);
-                dynamicIntensity = juce::jlimit(
-                    0.0f,
-                    1.0f,
-                    dynamicIntensity
-                    * (1.0f - audioAware * instantaneousLow * 0.22f)
-                    + audioAware * presence * 0.20f);
-            }
-
             if (performActive)
             {
                 const float pulse = performFade * (1.0f - 0.25f * performFade);
@@ -2232,6 +2214,56 @@ void ShakalizerAudioProcessor::processBlock(
 
             float dynamicIntensity =
                 intensity;
+
+            if (performActive)
+            {
+                const float pulse =
+                    performFade
+                    * (1.0f - 0.25f * performFade);
+
+                if (performType == 1)
+                {
+                    dynamicIntensity =
+                        juce::jlimit(
+                            0.0f, 1.0f,
+                            dynamicIntensity + pulse * 0.52f);
+                    localDestroy =
+                        juce::jlimit(
+                            0.0f, 1.0f,
+                            localDestroy + pulse * 0.38f);
+                    localCrush =
+                        juce::jlimit(
+                            0.0f, 1.0f,
+                            localCrush + pulse * 0.24f);
+                }
+                else if (performType == 2)
+                {
+                    localGlitch = 1.0f;
+                    localDestroy =
+                        juce::jlimit(
+                            0.0f, 1.0f,
+                            localDestroy + pulse * 0.22f);
+                }
+                else if (performType == 4)
+                {
+                    dynamicIntensity =
+                        juce::jlimit(
+                            0.0f, 1.0f,
+                            dynamicIntensity + pulse * 0.44f);
+                    localShatter =
+                        juce::jlimit(
+                            0.0f, 1.0f,
+                            localShatter + pulse * 0.34f);
+                    localFold =
+                        juce::jlimit(
+                            0.0f, 1.0f,
+                            localFold + pulse * 0.18f);
+                    localGlitch =
+                        juce::jlimit(
+                            0.0f, 1.0f,
+                            localGlitch + pulse * 0.42f);
+                }
+            }
 
             if (reactiveAmount > 0.0001f)
             {
@@ -2471,6 +2503,41 @@ void ShakalizerAudioProcessor::processBlock(
 
             const float air =
                 source - splitLow3[index];
+
+            if (audioAware > 0.0001f)
+            {
+                const float instantaneousLow =
+                    juce::jlimit(
+                        0.0f,
+                        1.0f,
+                        std::abs(low) * 2.8f);
+
+                const float instantaneousHigh =
+                    juce::jlimit(
+                        0.0f,
+                        1.0f,
+                        (std::abs(high) + std::abs(air))
+                        * 2.2f);
+
+                const float presence =
+                    juce::jlimit(
+                        0.0f,
+                        1.0f,
+                        instantaneousHigh * 0.68f
+                        + transientAmount * 0.52f
+                        + bodyAmount * 0.18f);
+
+                dynamicIntensity =
+                    juce::jlimit(
+                        0.0f,
+                        1.0f,
+                        dynamicIntensity
+                        * (1.0f
+                           - audioAware
+                             * instantaneousLow
+                             * 0.22f)
+                        + audioAware * presence * 0.20f);
+            }
 
             bandPeak[0] =
                 juce::jmax(
