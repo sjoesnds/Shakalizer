@@ -1120,8 +1120,25 @@ void ShakalizerAudioProcessor::processBlock(
             }
         }();
 
+    // SHAKAL is the master character macro. Its curve changes how
+    // quickly the destruction ramps up and it also feeds several
+    // secondary processors instead of controlling intensity only.
+    const float macroExponent =
+        juce::jmap(
+            macroCurve,
+            1.55f,
+            0.62f);
+
+    const float macroShaped =
+        std::pow(
+            juce::jlimit(
+                0.0f,
+                1.0f,
+                shakal),
+            macroExponent);
+
     float macro =
-        shakal
+        macroShaped
         * (0.72f + 0.28f * modeScale);
 
     macro =
@@ -1131,6 +1148,62 @@ void ShakalizerAudioProcessor::processBlock(
             juce::jmin(
                 1.0f,
                 macro + 0.35f));
+
+    // Macro coupling: higher SHAKAL progressively opens the destructive
+    // path while keeping low values useful and relatively clean.
+    destroy =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            destroy + macroShaped * 0.24f);
+
+    crush =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            crush + macroShaped * macroShaped * 0.16f);
+
+    decimate =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            decimate + macroShaped * 0.12f);
+
+    drive =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            drive + macroShaped * 0.10f);
+
+    clip =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            clip + macroShaped * 0.08f);
+
+    shatter =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            shatter + macroShaped * 0.18f);
+
+    glitch =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            glitch + macroShaped * 0.07f);
+
+    fold =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            fold + macroShaped * 0.06f);
+
+    shift =
+        juce::jlimit(
+            0.0f,
+            1.0f,
+            shift + macroShaped * 0.045f);
 
     float intensity =
         clamp01(
@@ -1725,12 +1798,10 @@ void ShakalizerAudioProcessor::processBlock(
     }
     else
     {
-        for (int ch = 0; ch < channels; ++ch)
-            for (int sample = 0; sample < samples; ++sample)
-                fftWetBuffer.setSample(
-                    ch,
-                    sample,
-                    buffer.getSample(ch, sample));
+        // Avoid a nested sample loop when FFT processing is bypassed.
+        fftWetBuffer.makeCopyOf(
+            buffer,
+            true);
     }
 
     float inputEnergy = 0.0f;
@@ -1744,6 +1815,10 @@ void ShakalizerAudioProcessor::processBlock(
          sample < samples;
          ++sample)
     {
+        // One shared event roll keeps stereo glitch events coherent.
+        const float glitchRoll =
+            nextRandom();
+
         movementPhase +=
             movementIncrement;
 
@@ -3061,9 +3136,11 @@ void ShakalizerAudioProcessor::processBlock(
                       * (gridBoundary ? 1.0f : 0.0f)
                       * timelineLevel
                     : localGlitch
-                      * 0.0000024f
-                      * (1.0f
-                         + dynamicIntensity * 2.0f);
+                      * glitchDensity
+                      * glitchProbability
+                      * 0.000018f
+                      * (0.65f
+                         + dynamicIntensity * 1.55f);
 
             if (glitchCooldown[index] > 0)
                 --glitchCooldown[index];
@@ -3075,7 +3152,7 @@ void ShakalizerAudioProcessor::processBlock(
             if (triggerChance > 0.0f
                 && glitchRemaining[index] <= 0
                 && glitchCooldown[index] <= 0
-                && nextRandom() < triggerChance)
+                && glitchRoll < triggerChance)
             {
                 const float eventVariation =
                     0.55f
