@@ -220,6 +220,14 @@ ShakalizerAudioProcessor::createParameterLayout()
     addFloat("motionMacro", "Motion", 0, 1, 0.001f, 0.0f);
     addFloat("chaosMacro", "Chaos", 0, 1, 0.001f, 0.0f);
     addFloat("spaceMacro", "Space", 0, 1, 0.001f, 0.0f);
+    // v7 intelligent cleanup / performance layer.
+    addFloat("antiNoise", "Anti Noise", 0, 1, 0.001f, 0.46f);
+    addFloat("antiDc", "DC Guard", 0, 1, 0.001f, 0.70f);
+    addFloat("antiAir", "Air Guard", 0, 1, 0.001f, 0.62f);
+    addFloat("antiPeak", "Peak Guard", 0, 1, 0.001f, 0.72f);
+    addFloat("humanRandom", "Human Random", 0, 1, 0.001f, 0.68f);
+    addFloat("audioAware", "Audio Aware", 0, 1, 0.001f, 0.66f);
+    addFloat("chaosShape", "Chaos Shape", 0, 1, 0.001f, 0.58f);
 
     p.push_back(
         std::make_unique<
@@ -625,6 +633,11 @@ void ShakalizerAudioProcessor::prepareToPlay(
 
     autoMatchGain = 1.0f;
     morphPhase = 0.0f;
+    dcBlockState.fill(0.0f);
+    performHeldSample.fill(0.0f);
+    performTrigger.store(0);
+    performType = 0;
+    performRemaining = 0;
     meterLevel.store(0.0f);
 }
 
@@ -999,6 +1012,13 @@ void ShakalizerAudioProcessor::processBlock(
     const float reactiveBass = clamp01(value("reactiveBass"));
     const float reactiveHigh = clamp01(value("reactiveHigh"));
     const float macroCurve = clamp01(value("macroCurve"));
+    const float antiNoise = clamp01(value("antiNoise"));
+    const float antiDc = clamp01(value("antiDc"));
+    const float antiAir = clamp01(value("antiAir"));
+    const float antiPeak = clamp01(value("antiPeak"));
+    const float humanRandom = clamp01(value("humanRandom"));
+    const float audioAware = clamp01(value("audioAware"));
+    const float chaosShape = clamp01(value("chaosShape"));
     float damageMacro = clamp01(value("damageMacro"));
     float motionMacro = clamp01(value("motionMacro"));
     float chaosMacro = clamp01(value("chaosMacro"));
@@ -1233,8 +1253,10 @@ void ShakalizerAudioProcessor::processBlock(
         std::pow(damageMacro, 0.78f);
     const float motionBoost =
         std::pow(motionMacro, 0.72f);
+    const float chaosExponent =
+        juce::jmap(chaosShape, 1.55f, 0.48f);
     const float chaosBoost =
-        std::pow(chaosMacro, 0.68f);
+        std::pow(chaosMacro, chaosExponent);
     const float spaceBoost =
         std::pow(spaceMacro, 0.80f);
 
@@ -1467,7 +1489,8 @@ void ShakalizerAudioProcessor::processBlock(
                 currentSampleRate)
             * 0.46f,
             19000.0f
-            - smooth * 10500.0f);
+            - smooth * 10500.0f
+            - antiNoise * antiAir * 3600.0f);
 
     for (auto& filter : safetyFilter)
     {
@@ -1531,6 +1554,16 @@ void ShakalizerAudioProcessor::processBlock(
             }
         }
     };
+
+    const int requestedPerformTrigger = performTrigger.exchange(0);
+    if (requestedPerformTrigger > 0)
+    {
+        performType = juce::jlimit(1, 4, requestedPerformTrigger);
+        performRemaining = static_cast<int>(0.14 * currentSampleRate);
+        for (int ch = 0; ch < channels; ++ch)
+            performHeldSample[static_cast<size_t>(ch)] =
+                dryBuffer.getSample(ch, 0);
+    }
 
     if (quality == 1)
     {
@@ -1890,6 +1923,15 @@ void ShakalizerAudioProcessor::processBlock(
         if (syncPhase >= 2.0f * pi)
             syncPhase -= 2.0f * pi;
 
+        const bool performActive = performRemaining > 0;
+        const float performProgress = performActive
+            ? 1.0f - static_cast<float>(performRemaining)
+              / static_cast<float>(juce::jmax(1, static_cast<int>(0.14 * currentSampleRate)))
+            : 1.0f;
+        const float performFade = performActive
+            ? std::sin(juce::jlimit(0.0f, 1.0f, performProgress) * pi)
+            : 0.0f;
+
         if (movementShape == 2)
         {
             if (--movementHoldCounter <= 0)
@@ -2139,6 +2181,47 @@ void ShakalizerAudioProcessor::processBlock(
 
             localGlitch =
                 clamp01(localGlitch);
+
+            if (audioAware > 0.0001f)
+            {
+                const float instantaneousLow = juce::jlimit(0.0f, 1.0f, std::abs(low) * 2.8f);
+                const float instantaneousHigh = juce::jlimit(0.0f, 1.0f, (std::abs(high) + std::abs(air)) * 2.2f);
+                const float presence = juce::jlimit(
+                    0.0f,
+                    1.0f,
+                    instantaneousHigh * 0.68f
+                    + transientAmount * 0.52f
+                    + bodyAmount * 0.18f);
+                dynamicIntensity = juce::jlimit(
+                    0.0f,
+                    1.0f,
+                    dynamicIntensity
+                    * (1.0f - audioAware * instantaneousLow * 0.22f)
+                    + audioAware * presence * 0.20f);
+            }
+
+            if (performActive)
+            {
+                const float pulse = performFade * (1.0f - 0.25f * performFade);
+                if (performType == 1)
+                {
+                    dynamicIntensity = juce::jlimit(0.0f, 1.0f, dynamicIntensity + pulse * 0.52f);
+                    localDestroy = juce::jlimit(0.0f, 1.0f, localDestroy + pulse * 0.38f);
+                    localCrush = juce::jlimit(0.0f, 1.0f, localCrush + pulse * 0.24f);
+                }
+                else if (performType == 2)
+                {
+                    localGlitch = 1.0f;
+                    localDestroy = juce::jlimit(0.0f, 1.0f, localDestroy + pulse * 0.22f);
+                }
+                else if (performType == 4)
+                {
+                    dynamicIntensity = juce::jlimit(0.0f, 1.0f, dynamicIntensity + pulse * 0.44f);
+                    localShatter = juce::jlimit(0.0f, 1.0f, localShatter + pulse * 0.34f);
+                    localFold = juce::jlimit(0.0f, 1.0f, localFold + pulse * 0.18f);
+                    localGlitch = juce::jlimit(0.0f, 1.0f, localGlitch + pulse * 0.42f);
+                }
+            }
 
             const float reactiveSignal =
                 clamp01(
@@ -3216,7 +3299,7 @@ void ShakalizerAudioProcessor::processBlock(
                 default: break;
             }
 
-            const float triggerChance =
+            float triggerChance =
                 gridSlots > 0
                     ? localGlitch
                       * glitchDensity
@@ -3233,6 +3316,15 @@ void ShakalizerAudioProcessor::processBlock(
                       * (0.65f
                          + dynamicIntensity * 1.55f)
                       * (0.45f + 0.55f * patternGate);
+
+            const float humanTiming =
+                0.72f + humanRandom * (0.18f + transientAmount * 0.42f);
+            triggerChance =
+                juce::jlimit(
+                    0.0f,
+                    1.0f,
+                    triggerChance * humanTiming
+                    + (performActive && performType == 2 ? 1.0f : 0.0f));
 
             if (glitchCooldown[index] > 0)
                 --glitchCooldown[index];
@@ -3259,7 +3351,8 @@ void ShakalizerAudioProcessor::processBlock(
                         static_cast<int>(
                             std::round(
                                 requestedGlitchSamples
-                                * eventVariation)));
+                                * eventVariation
+                                * (0.86f + humanRandom * 0.30f)));
 
                 glitchEventAge[index] = 0;
                 glitchRemaining[index] =
@@ -3274,6 +3367,20 @@ void ShakalizerAudioProcessor::processBlock(
                             nextRandom() * 2200.0f));
 
                 glitchValue[index] = wet;
+            }
+
+            if (performActive && performType == 3)
+                wet = juce::jmap(
+                    performFade * 0.84f,
+                    wet,
+                    performHeldSample[index]);
+
+            if (performActive && performType == 4)
+            {
+                const float failWave = std::sin(
+                    movementPhase * (5.0f + chaosBoost * 17.0f)
+                    + static_cast<float>(index));
+                wet *= 0.58f + 0.42f * failWave;
             }
 
             if (glitchRemaining[index] > 0)
@@ -3638,6 +3745,13 @@ void ShakalizerAudioProcessor::processBlock(
                     std::abs(out));
         }
 
+        if (performRemaining > 0)
+        {
+            --performRemaining;
+            if (performRemaining == 0)
+                performType = 0;
+        }
+
         ++resonatorWriteIndex;
 
         if (resonatorWriteIndex
@@ -3838,11 +3952,26 @@ void ShakalizerAudioProcessor::processBlock(
                         0,
                         x);
 
+            const float dcAlpha =
+                0.00034f + antiDc * antiNoise * 0.0012f;
+            dcBlockState[static_cast<size_t>(ch)] +=
+                dcAlpha * (x - dcBlockState[static_cast<size_t>(ch)]);
+            const float dcClean =
+                x - dcBlockState[static_cast<size_t>(ch)];
+            x = juce::jmap(
+                antiNoise * antiDc,
+                x,
+                dcClean);
+
+            const float guardStrength =
+                0.26f
+                + smooth * 0.62f
+                + antiNoise * antiPeak * 0.80f;
+
             x =
                 softCeiling(
                     x,
-                    0.26f
-                    + smooth * 0.62f);
+                    guardStrength);
 
             if (!std::isfinite(x))
                 x = 0.0f;
