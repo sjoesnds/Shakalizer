@@ -4149,3 +4149,4 @@ JUCE_CALLTYPE createPluginFilter()
 {
     return new ShakalizerAudioProcessor();
 }
+// CI V7 final validation marker.
