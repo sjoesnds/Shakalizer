@@ -309,8 +309,8 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
 {
     setLookAndFeel(&lookAndFeel);
     setResizable(true, true);
-    setResizeLimits(980, 700, 1500, 1000);
-    setSize(1180, 760);
+    setResizeLimits(980, 620, 1500, 900);
+    setSize(1180, 650);
 
     titleLabel.setText(
         "SHAKALIZER",
@@ -1064,7 +1064,7 @@ void ShakalizerAudioProcessorEditor::resized()
             sliders[static_cast<size_t>(i)]->setVisible(false);
     }
 
-    const int cellH = 76;
+    const int cellH = 70;
 
     for (size_t n = 0; n < visible.size(); ++n)
     {
@@ -1174,32 +1174,33 @@ bool ShakalizerAudioProcessorEditor::sliderBelongsToPage(
     switch (page)
     {
         case 0: // Core.
-            return (i >= 0 && i <= 18)
+            return (i >= 0 && i <= 5)
+                || (i >= 8 && i <= 18)
                 || (i >= 28 && i <= 30);
 
         case 1: // Glitch / timeline.
             return i == 6 || i == 7
-                || (i >= 35 && i <= 39)
-                || (i >= 68 && i <= 76);
+                || (i >= 36 && i <= 39)
+                || (i >= 68 && i <= 77);
 
         case 2: // Spectral / FFT.
             return (i >= 19 && i <= 27)
                 || (i >= 40 && i <= 44)
-                || (i >= 56 && i <= 62)
-                || (i >= 77 && i <= 79);
+                || (i >= 56 && i <= 60)
+                || (i >= 78 && i <= 80);
 
         case 3: // Modulation matrix.
-            return (i >= 31 && i <= 34)
+            return (i >= 31 && i <= 35)
                 || (i >= 45 && i <= 47)
                 || (i >= 52 && i <= 55);
 
         case 4: // Granular.
-            return (i >= 63 && i <= 66)
-                || (i >= 80 && i <= 84);
+            return (i >= 61 && i <= 64)
+                || (i >= 81 && i <= 85);
 
         case 5: // Feedback.
-            return (i >= 67 && i <= 67)
-                || (i >= 85 && i <= 90);
+            return (i >= 65 && i <= 67)
+                || (i >= 86 && i <= 90);
 
         case 6: // Reactive / pitch.
             return (i >= 48 && i <= 51)
