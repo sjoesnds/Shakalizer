@@ -44,6 +44,11 @@ public:
     float getGlitchActivity() const noexcept { return glitchActivity.load(); }
     float getModulationActivity() const noexcept { return modulationActivity.load(); }
 
+    void triggerSmash() noexcept { performTrigger.store(1); }
+    void triggerGlitch() noexcept { performTrigger.store(2); }
+    void triggerFreeze() noexcept { performTrigger.store(3); }
+    void triggerFail() noexcept { performTrigger.store(4); }
+
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
@@ -115,6 +120,11 @@ private:
     int unstableRemaining = 0;
 
     std::array<float, 2> alienPhase { 0.0f, 0.0f };
+    std::array<float, 2> dcBlockState { 0.0f, 0.0f };
+    std::array<float, 2> performHeldSample { 0.0f, 0.0f };
+    std::atomic<int> performTrigger { 0 };
+    int performType = 0;
+    int performRemaining = 0;
 
     static constexpr int fftSize = 128;
     juce::dsp::FFT fft { 7 };
