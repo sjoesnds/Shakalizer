@@ -1,4 +1,6 @@
 #include "PluginProcessor.h"
+// V6 CI validation branch: source unchanged apart from this marker.
+
 #include "PluginEditor.h"
 
 namespace
