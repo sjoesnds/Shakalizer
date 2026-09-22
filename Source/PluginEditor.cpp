@@ -1206,14 +1206,15 @@ void ShakalizerAudioProcessorEditor::resized()
 
     for (size_t i = 0; i < pageButtons.size(); ++i)
     {
-        const int x = 30 + static_cast<int>(i) * 104;
-        pageButtons[i].setBounds(x, 112, 98, 24);
+        const int x = 24 + static_cast<int>(i) * 94;
+        pageButtons[i].setBounds(x, 112, 90, 24);
         pageButtons[i].setToggleState(
             static_cast<int>(i) == currentPage,
             juce::dontSendNotification);
     }
 
-    const int contentTop = 144;
+    const bool enginePage = currentPage == 9;
+    const int contentTop = enginePage ? 176 : 144;
     const int gapX = 2;
     const int gapY = 1;
     const int cols = 6;
@@ -1256,7 +1257,9 @@ void ShakalizerAudioProcessorEditor::resized()
     const bool performPage = currentPage == 8;
     for (auto* button : { &saveCButton, &cdButton,
                           &smashButton, &glitchButton,
-                          &freezeButton, &failButton })
+                          &freezeButton, &failButton,
+                          &cutButton, &reverseButton,
+                          &shatterButton, &meltButton })
         button->setVisible(performPage);
 
     if (performPage)
@@ -1267,6 +1270,18 @@ void ShakalizerAudioProcessorEditor::resized()
         glitchButton.setBounds(116, contentTop + 184, 82, 26);
         freezeButton.setBounds(202, contentTop + 184, 82, 26);
         failButton.setBounds(288, contentTop + 184, 82, 26);
+        cutButton.setBounds(30, contentTop + 216, 82, 26);
+        reverseButton.setBounds(116, contentTop + 216, 82, 26);
+        shatterButton.setBounds(202, contentTop + 216, 82, 26);
+        meltButton.setBounds(288, contentTop + 216, 82, 26);
+    }
+
+    engineModeBox.setVisible(enginePage);
+    modCurveBox.setVisible(enginePage);
+    if (enginePage)
+    {
+        engineModeBox.setBounds(30, 146, 170, 24);
+        modCurveBox.setBounds(208, 146, 170, 24);
     }
 
     for (int i = 0; i < 8; ++i)
@@ -1399,6 +1414,9 @@ bool ShakalizerAudioProcessorEditor::sliderBelongsToPage(
 
         case 8: // Performance / intelligent cleanup.
             return i >= 105 && i <= 111;
+
+        case 9: // Final engine / intelligence page.
+            return i >= 112 && i <= 121;
 
         default:
             return false;
