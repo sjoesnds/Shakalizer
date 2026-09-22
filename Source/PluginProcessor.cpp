@@ -2707,13 +2707,31 @@ void ShakalizerAudioProcessor::processBlock(
                         * (wet
                            + feedbackSample));
 
-                feedbackBuffer[index][
-                    static_cast<size_t>(
-                        feedbackWriteIndex)] =
+                // Keep recursive feedback bounded even at extreme settings.
+                if (!std::isfinite(feedbackState[index]))
+                    feedbackState[index] = 0.0f;
+
+                feedbackState[index] =
+                    juce::jlimit(-3.0f, 3.0f,
+                                 feedbackState[index]);
+
+                float& feedbackWrite =
+                    feedbackBuffer[index][
+                        static_cast<size_t>(
+                            feedbackWriteIndex)];
+
+                feedbackWrite =
                     juce::jmap(
                         feedbackPitch,
                         feedbackState[index],
                         delayed);
+
+                if (!std::isfinite(feedbackWrite))
+                    feedbackWrite = 0.0f;
+
+                feedbackWrite =
+                    juce::jlimit(-3.0f, 3.0f,
+                                 feedbackWrite);
             }
 
             if (grainMix > 0.0001f)
@@ -3586,6 +3604,15 @@ void ShakalizerAudioProcessor::processBlock(
             0.035f
             * (target
                - autoMatchGain);
+
+        if (!std::isfinite(autoMatchGain))
+            autoMatchGain = 1.0f;
+
+        autoMatchGain =
+            juce::jlimit(
+                0.35f,
+                2.0f,
+                autoMatchGain);
     }
     else
     {
@@ -3595,13 +3622,19 @@ void ShakalizerAudioProcessor::processBlock(
                - autoMatchGain);
     }
 
+    if (!std::isfinite(autoMatchGain))
+        autoMatchGain = 1.0f;
+
     const float finalGain =
         juce::Decibels::decibelsToGain(
             outputDb)
-        * autoMatchGain;
+        * juce::jlimit(
+            0.35f,
+            2.0f,
+            autoMatchGain);
 
-    buffer.applyGain(
-        finalGain);
+    if (std::isfinite(finalGain))
+        buffer.applyGain(finalGain);
 
     for (int ch = 0;
          ch < channels;
