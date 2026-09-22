@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Shakalizer VERSION 7.0.0)
+project(Shakalizer VERSION 10.0.0)
 
 include(FetchContent)
 
