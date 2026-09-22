@@ -3952,17 +3952,30 @@ void ShakalizerAudioProcessor::processBlock(
                         0,
                         x);
 
+            const float noiseFloor =
+                0.0008f + antiNoise * 0.0042f;
+            const float sourceLevel =
+                std::abs(dryBuffer.getSample(ch, sample));
+            float gate =
+                juce::jlimit(
+                    0.0f,
+                    1.0f,
+                    (sourceLevel - noiseFloor * 0.35f)
+                    / juce::jmax(0.0001f, noiseFloor * 1.25f));
+            gate =
+                gate * gate * (3.0f - 2.0f * gate);
+            x *=
+                juce::jmap(
+                    antiNoise * 0.34f,
+                    1.0f,
+                    0.40f + gate * 0.60f);
+
             const float dcAlpha =
                 0.00034f + antiDc * antiNoise * 0.0012f;
             dcBlockState[static_cast<size_t>(ch)] +=
                 dcAlpha * (x - dcBlockState[static_cast<size_t>(ch)]);
             const float dcClean =
                 x - dcBlockState[static_cast<size_t>(ch)];
-            x = juce::jmap(
-                antiNoise * antiDc,
-                x,
-                dcClean);
-
             const float guardStrength =
                 0.26f
                 + smooth * 0.62f
