@@ -160,3 +160,30 @@ The v5 pass is a final polish cycle rather than another feature dump.
 - RANDOM ALL remains global and still randomizes the complete processor parameter list, including modes, routing, modulation, quality, sync and boolean parameters.
 
 The release-candidate gate is: clean Windows VST3 build, artifact packaging, FL Studio automation/state testing, multiple-instance testing, bypass testing and no observed invalid audio output.
+
+
+## v6.0 — Intelligent Destruction Workstation
+
+Shakalizer 6.0 builds on the V5 destruction engine with a higher-level performance layer.
+
+### Master Macros
+- **DAMAGE** couples Destroy, Crush, Decimate, Drive, Clip and Shatter.
+- **MOTION** couples Movement, Jitter and Glitch.
+- **CHAOS** couples instability, pitch damage and glitch activity.
+- **SPACE** couples feedback, diffusion, spread and stereo.
+- A dedicated **MACRO** page exposes the main SHAKAL/MIX controls together with the four master macros.
+
+### Glitch Pattern Engine
+Tempo-aware glitch triggering now includes Auto, Straight, Offbeat, Syncopated, Sparse, Dense and Burst pattern families while retaining the existing event modes and timeline steps.
+
+### Character Engine 2.0
+The Digital, VHS, Console, Radio, Metallic, Broken, Alien, Cheap DAC and Corrupt profiles now have stronger, more distinct processing signatures.
+
+### Realtime Visual Engine
+The editor exposes a compact realtime scope/spectrum display backed by the processor telemetry.
+
+### Preset Expansion
+The factory bank is expanded to 24 named patches spanning digital bass, drums, glitch, character, radio, space and aggressive Shakal presets. Smart Random also shapes the new master macros.
+
+### Compatibility
+Existing parameter identifiers are kept intact. The new V6 parameters are appended to the parameter set so existing V5 projects can retain their original controls.
