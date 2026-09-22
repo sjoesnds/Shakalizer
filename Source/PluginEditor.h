@@ -59,7 +59,7 @@ private:
         ShakalizerAudioProcessor& processor;
     };
 
-    static constexpr int sliderCount = 112;
+    static constexpr int sliderCount = 122;
 
     void configureSlider(juce::Slider&, const juce::String&,
                          double min, double max, double step);
@@ -95,7 +95,7 @@ private:
     juce::Label subtitleLabel;
     juce::Label pageLabel;
 
-    std::array<juce::TextButton, 9> pageButtons {
+    std::array<juce::TextButton, 10> pageButtons {
         juce::TextButton { "CORE" },
         juce::TextButton { "GLITCH" },
         juce::TextButton { "SPECTRAL" },
@@ -104,7 +104,8 @@ private:
         juce::TextButton { "FEEDBACK" },
         juce::TextButton { "REACTIVE" },
         juce::TextButton { "MACRO" },
-        juce::TextButton { "PERFORM" }
+        juce::TextButton { "PERFORM" },
+        juce::TextButton { "ENGINE" }
     };
 
     int currentPage = 0;
@@ -130,6 +131,8 @@ private:
     juce::ComboBox fftWindowBox;
     juce::ComboBox pitchModeBox;
     juce::ComboBox routingTopologyBox;
+    juce::ComboBox engineModeBox;
+    juce::ComboBox modCurveBox;
 
     std::array<juce::ComboBox*, 8> modSourceBoxes {
         nullptr, nullptr, nullptr, nullptr,
@@ -175,6 +178,10 @@ private:
     juce::TextButton glitchButton { "GLITCH" };
     juce::TextButton freezeButton { "FREEZE" };
     juce::TextButton failButton { "FAIL" };
+    juce::TextButton cutButton { "CUT" };
+    juce::TextButton reverseButton { "REVERSE" };
+    juce::TextButton shatterButton { "SHATTER" };
+    juce::TextButton meltButton { "MELT" };
     juce::TextButton savePresetButton { "SAVE" };
     juce::TextButton loadPresetButton { "LOAD" };
     juce::TextButton favoritePresetButton { "FAV" };
@@ -303,6 +310,16 @@ private:
     juce::Slider humanRandomSlider;
     juce::Slider audioAwareSlider;
     juce::Slider chaosShapeSlider;
+    juce::Slider engineDepthSlider;
+    juce::Slider intelligenceSlider;
+    juce::Slider bassFocusSlider;
+    juce::Slider transientFocusSlider;
+    juce::Slider presenceFocusSlider;
+    juce::Slider grooveSlider;
+    juce::Slider modHumanizeSlider;
+    juce::Slider performanceIntensitySlider;
+    juce::Slider outputGlueSlider;
+    juce::Slider textureSlider;
 
     std::array<juce::Slider*, sliderCount> sliders {
         &shakalSlider, &destroySlider, &crushSlider, &decimateSlider,
@@ -345,7 +362,10 @@ private:
         &chaosMacroSlider, &spaceMacroSlider,
         &antiNoiseSlider, &antiDcSlider, &antiAirSlider,
         &antiPeakSlider, &humanRandomSlider, &audioAwareSlider,
-        &chaosShapeSlider
+        &chaosShapeSlider, &engineDepthSlider, &intelligenceSlider,
+        &bassFocusSlider, &transientFocusSlider, &presenceFocusSlider,
+        &grooveSlider, &modHumanizeSlider, &performanceIntensitySlider,
+        &outputGlueSlider, &textureSlider
     };
 
     std::array<juce::String, sliderCount> sliderNames {
@@ -378,7 +398,10 @@ private:
         "REACTIVE BASS", "REACTIVE HIGH", "MACRO CURVE", "SCENE MORPH",
         "DAMAGE", "MOTION", "CHAOS", "SPACE",
         "ANTI-NOISE", "DC GUARD", "AIR GUARD", "PEAK GUARD",
-        "HUMAN RANDOM", "AUDIO AWARE", "CHAOS SHAPE"
+        "HUMAN RANDOM", "AUDIO AWARE", "CHAOS SHAPE",
+        "ENGINE DEPTH", "INTELLIGENCE", "BASS FOCUS", "TRANSIENT FOCUS",
+        "PRESENCE FOCUS", "GROOVE", "MOD HUMANIZE", "PERFORM INTENSITY",
+        "OUTPUT GLUE", "TEXTURE"
     };
 
     std::vector<std::unique_ptr<
@@ -464,6 +487,14 @@ private:
     std::unique_ptr<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>
         routingTopologyAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        engineModeAttachment;
+
+    std::unique_ptr<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        modCurveAttachment;
 
     std::array<std::unique_ptr<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>, 8>
