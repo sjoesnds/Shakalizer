@@ -59,7 +59,7 @@ private:
         ShakalizerAudioProcessor& processor;
     };
 
-    static constexpr int sliderCount = 105;
+    static constexpr int sliderCount = 112;
 
     void configureSlider(juce::Slider&, const juce::String&,
                          double min, double max, double step);
@@ -69,6 +69,8 @@ private:
 
     void saveA();
     void swapAB();
+    void saveC();
+    void swapCD();
     void toggleAutoMatch();
     void toggleSmart();
 
@@ -93,7 +95,7 @@ private:
     juce::Label subtitleLabel;
     juce::Label pageLabel;
 
-    std::array<juce::TextButton, 8> pageButtons {
+    std::array<juce::TextButton, 9> pageButtons {
         juce::TextButton { "CORE" },
         juce::TextButton { "GLITCH" },
         juce::TextButton { "SPECTRAL" },
@@ -101,7 +103,8 @@ private:
         juce::TextButton { "GRANULAR" },
         juce::TextButton { "FEEDBACK" },
         juce::TextButton { "REACTIVE" },
-        juce::TextButton { "MACRO" }
+        juce::TextButton { "MACRO" },
+        juce::TextButton { "PERFORM" }
     };
 
     int currentPage = 0;
@@ -158,6 +161,8 @@ private:
 
     juce::TextButton saveAButton { "SAVE A" };
     juce::TextButton abButton { "A / B" };
+    juce::TextButton saveCButton { "SAVE C" };
+    juce::TextButton cdButton { "C / D" };
     juce::TextButton autoMatchButton { "AUTO" };
     juce::TextButton smartButton { "SMART" };
 
@@ -166,6 +171,10 @@ private:
     juce::TextButton randomShatterButton { "SHATTER" };
     juce::TextButton randomGlitchButton { "GLITCH" };
     juce::TextButton randomModButton { "MOD" };
+    juce::TextButton smashButton { "SMASH" };
+    juce::TextButton glitchButton { "GLITCH" };
+    juce::TextButton freezeButton { "FREEZE" };
+    juce::TextButton failButton { "FAIL" };
     juce::TextButton savePresetButton { "SAVE" };
     juce::TextButton loadPresetButton { "LOAD" };
     juce::TextButton favoritePresetButton { "FAV" };
@@ -287,6 +296,13 @@ private:
     juce::Slider motionMacroSlider;
     juce::Slider chaosMacroSlider;
     juce::Slider spaceMacroSlider;
+    juce::Slider antiNoiseSlider;
+    juce::Slider antiDcSlider;
+    juce::Slider antiAirSlider;
+    juce::Slider antiPeakSlider;
+    juce::Slider humanRandomSlider;
+    juce::Slider audioAwareSlider;
+    juce::Slider chaosShapeSlider;
 
     std::array<juce::Slider*, sliderCount> sliders {
         &shakalSlider, &destroySlider, &crushSlider, &decimateSlider,
@@ -326,7 +342,10 @@ private:
         &reactiveSpectralSlider, &reactiveBassSlider, &reactiveHighSlider,
         &macroCurveSlider, &sceneMorphTimeSlider,
         &damageMacroSlider, &motionMacroSlider,
-        &chaosMacroSlider, &spaceMacroSlider
+        &chaosMacroSlider, &spaceMacroSlider,
+        &antiNoiseSlider, &antiDcSlider, &antiAirSlider,
+        &antiPeakSlider, &humanRandomSlider, &audioAwareSlider,
+        &chaosShapeSlider
     };
 
     std::array<juce::String, sliderCount> sliderNames {
@@ -357,7 +376,9 @@ private:
         "FEEDBACK PITCH", "PITCH DAMAGE", "PITCH RANGE", "PITCH DRIFT",
         "REACTIVE AMOUNT", "REACTIVE TRANSIENT", "REACTIVE SPECTRAL",
         "REACTIVE BASS", "REACTIVE HIGH", "MACRO CURVE", "SCENE MORPH",
-        "DAMAGE", "MOTION", "CHAOS", "SPACE"
+        "DAMAGE", "MOTION", "CHAOS", "SPACE",
+        "ANTI-NOISE", "DC GUARD", "AIR GUARD", "PEAK GUARD",
+        "HUMAN RANDOM", "AUDIO AWARE", "CHAOS SHAPE"
     };
 
     std::vector<std::unique_ptr<
@@ -453,7 +474,9 @@ private:
         modDestAttachments;
 
     std::vector<float> abState;
+    std::vector<float> cdState;
     bool hasAState = false;
+    bool hasCState = false;
 
     std::array<bool, 24> favoritePresets {};
     std::unique_ptr<juce::FileChooser> presetFileChooser;
