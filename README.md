@@ -187,3 +187,28 @@ The factory bank is expanded to 24 named patches spanning digital bass, drums, g
 
 ### Compatibility
 Existing parameter identifiers are kept intact. The new V6 parameters are appended to the parameter set so existing V5 projects can retain their original controls.
+
+
+## v7.0 — Intelligent Cleanup / Performance Layer
+
+Shakalizer 7 adds a dedicated cleanup layer and performance controls without changing the existing V6 parameter identifiers.
+
+### Anti-Noise Engine
+- **ANTI-NOISE** is a master cleanup control applied after destructive processing.
+- **DC GUARD** removes accumulated DC offset without hard muting the low end.
+- **AIR GUARD** dynamically tightens the final safety bandwidth when destructive processing becomes harsh.
+- **PEAK GUARD** adds a second adaptive ceiling stage for runaway peaks and resonance.
+
+### Human / Reactive Destruction
+- **HUMAN RANDOM** biases glitch timing and event length toward less mechanical variation.
+- **AUDIO AWARE** reacts to transient, low, high and body content so destruction follows the source instead of remaining static.
+- **CHAOS SHAPE** changes the response curve of the CHAOS macro, from gradual instability to early aggressive mutation.
+
+### Performance Triggers
+The PERFORM page exposes four momentary actions: **SMASH**, **GLITCH**, **FREEZE** and **FAIL**. Each creates a short controlled burst using the existing destruction engine rather than a separate effect path.
+
+### Scenes
+The existing A/B workflow is complemented by a second C/D snapshot pair for quick sound-design comparison.
+
+### Compatibility / Stability
+V7 keeps the V6 parameters intact and appends the new controls. The cleanup layer runs in fixed-size realtime processing, keeps recursive state bounded, and continues to finite-check the final output.
