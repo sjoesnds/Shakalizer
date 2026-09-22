@@ -67,6 +67,8 @@ private:
     void loadPresetFromFile();
 
     void loadPreset(int index);
+    void setPage(int page);
+    bool sliderBelongsToPage(int sliderIndex, int page) const noexcept;
 
     void captureState(std::vector<float>& destination);
     void applyState(const std::vector<float>& state);
@@ -76,6 +78,19 @@ private:
 
     juce::Label titleLabel;
     juce::Label subtitleLabel;
+    juce::Label pageLabel;
+
+    std::array<juce::TextButton, 7> pageButtons {
+        juce::TextButton { "CORE" },
+        juce::TextButton { "GLITCH" },
+        juce::TextButton { "SPECTRAL" },
+        juce::TextButton { "MOD" },
+        juce::TextButton { "GRANULAR" },
+        juce::TextButton { "FEEDBACK" },
+        juce::TextButton { "REACTIVE" }
+    };
+
+    int currentPage = 0;
 
     juce::ComboBox presetBox;
     juce::ComboBox modeBox;
