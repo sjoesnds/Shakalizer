@@ -1046,7 +1046,6 @@ void ShakalizerAudioProcessorEditor::resized()
     }
 
     const int contentTop = 144;
-    const int contentBottom = h - 18;
     const int gapX = 2;
     const int gapY = 1;
     const int cols = 6;
@@ -1064,11 +1063,6 @@ void ShakalizerAudioProcessorEditor::resized()
         else
             sliders[static_cast<size_t>(i)]->setVisible(false);
     }
-
-    const int rows =
-        juce::jmax(
-            1,
-            (static_cast<int>(visible.size()) + cols - 1) / cols);
 
     const int cellH = 76;
 
