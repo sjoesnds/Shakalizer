@@ -980,15 +980,24 @@ void ShakalizerAudioProcessorEditor::resized()
     titleLabel.setBounds(30, 15, 190, 32);
     subtitleLabel.setBounds(30, 44, 255, 15);
 
-    presetBox.setBounds(225, 15, 118, 28);
+    presetBox.setBounds(224, 15, 106, 28);
 
-    saveAButton.setBounds(350, 15, 52, 28);
-    abButton.setBounds(406, 15, 44, 28);
-    autoMatchButton.setBounds(454, 15, 48, 28);
-    smartButton.setBounds(506, 15, 52, 28);
+    savePresetButton.setBounds(336, 15, 44, 28);
+    loadPresetButton.setBounds(384, 15, 44, 28);
+    favoritePresetButton.setBounds(432, 15, 42, 28);
 
-    randomAllButton.setBounds(w - 100, 15, 86, 28);
-    pageLabel.setBounds(w - 214, 18, 104, 20);
+    saveAButton.setBounds(480, 15, 52, 28);
+    abButton.setBounds(536, 15, 44, 28);
+    autoMatchButton.setBounds(584, 15, 48, 28);
+    smartButton.setBounds(636, 15, 52, 28);
+
+    randomCoreButton.setBounds(694, 15, 46, 28);
+    randomShatterButton.setBounds(744, 15, 56, 28);
+    randomGlitchButton.setBounds(804, 15, 50, 28);
+    randomModButton.setBounds(858, 15, 46, 28);
+
+    randomAllButton.setBounds(908, 15, 92, 28);
+    pageLabel.setBounds(1008, 18, 86, 20);
 
     const int comboY1 = 56;
     const int comboY2 = 82;
@@ -1039,7 +1048,7 @@ void ShakalizerAudioProcessorEditor::resized()
     const int contentTop = 144;
     const int contentBottom = h - 18;
     const int gapX = 2;
-    const int gapY = 2;
+    const int gapY = 1;
     const int cols = 6;
     const int availableW = w - 48;
     const int cellW =
@@ -1061,12 +1070,7 @@ void ShakalizerAudioProcessorEditor::resized()
             1,
             (static_cast<int>(visible.size()) + cols - 1) / cols);
 
-    const int cellH =
-        juce::jmax(
-            54,
-            (contentBottom - contentTop
-             - gapY * (rows - 1))
-            / rows);
+    const int cellH = 76;
 
     for (size_t n = 0; n < visible.size(); ++n)
     {
