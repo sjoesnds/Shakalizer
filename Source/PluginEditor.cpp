@@ -870,6 +870,7 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
                 static_cast<size_t>(i)]);
     }
 
+    setPage(0);
     startTimerHz(20);
 }
 
@@ -1102,17 +1103,38 @@ void ShakalizerAudioProcessorEditor::resized()
         }
     }
 
-    // On MOD page, place the 8 modulation amount controls in the right area.
+    // On MOD page, the eight source/destination rows use the matching
+    // modulation amount sliders: 1-4 and 5-8 are separated in the parameter list.
     if (modPage)
     {
-        for (int i = 0; i < 8; ++i)
-        {
-            sliders[static_cast<size_t>(31 + i)]
-                ->setVisible(false);
+        const std::array<int, 8> amountIndices {
+            31, 32, 33, 34, 52, 53, 54, 55
+        };
 
-            sliders[static_cast<size_t>(31 + i)]
-                ->setBounds(260, contentTop + i * 56, 150, 48);
+        for (int row = 0; row < 8; ++row)
+        {
+            const int sliderIndex =
+                amountIndices[static_cast<size_t>(row)];
+
+            auto* slider =
+                sliders[static_cast<size_t>(sliderIndex)];
+
+            slider->setVisible(true);
+            slider->setBounds(
+                258,
+                contentTop + row * 56,
+                190,
+                50);
         }
+
+        sliders[35]->setVisible(false); // Morph
+        sliders[45]->setVisible(true);
+        sliders[46]->setVisible(true);
+        sliders[47]->setVisible(true);
+
+        sliders[45]->setBounds(470, contentTop, 170, 72);
+        sliders[46]->setBounds(650, contentTop, 170, 72);
+        sliders[47]->setBounds(830, contentTop, 170, 72);
     }
 
     meterLabel.setBounds(w - 96, 46, 34, 12);
