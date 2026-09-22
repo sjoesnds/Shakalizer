@@ -1465,29 +1465,228 @@ void ShakalizerAudioProcessorEditor::applyState(
 
 void ShakalizerAudioProcessorEditor::randomizeAll()
 {
+    // Smart random: first randomize the complete state, then shape the
+    // result into a coherent, usable effect instead of pure chaos.
     static juce::Random random;
 
-    for (auto* parameter :
-         processor.getParameters())
+    for (auto* parameter : processor.getParameters())
     {
         if (parameter == nullptr)
             continue;
 
-        if (dynamic_cast<
-                juce::AudioParameterBool*>(
+        if (dynamic_cast<juce::AudioParameterBool*>(
                 parameter) != nullptr)
         {
             parameter->setValueNotifyingHost(
-                random.nextFloat()
-                    > 0.72f
-                    ? 1.0f
-                    : 0.0f);
+                random.nextFloat() > 0.78f ? 1.0f : 0.0f);
         }
         else
         {
             parameter->setValueNotifyingHost(
-                random.nextFloat());
+                juce::jlimit(
+                    0.02f,
+                    0.94f,
+                    0.10f + random.nextFloat() * 0.84f));
         }
+    }
+
+    auto setNorm =
+        [this](const char* id, float v)
+    {
+        if (auto* parameter =
+                processor.getAPVTS().getParameter(id))
+        {
+            parameter->setValueNotifyingHost(
+                juce::jlimit(0.0f, 1.0f, v));
+        }
+    };
+
+    auto setChoice =
+        [this, &random](const char* id, int count)
+    {
+        if (auto* parameter =
+                processor.getAPVTS().getParameter(id))
+        {
+            if (count > 1)
+            {
+                const int index =
+                    random.nextInt(count);
+
+                parameter->setValueNotifyingHost(
+                    static_cast<float>(index)
+                    / static_cast<float>(count - 1));
+            }
+        }
+    };
+
+    // Give the patch a clear main personality.
+    const float main =
+        0.35f + random.nextFloat() * 0.55f;
+
+    setNorm("shakal", main);
+    setNorm("destroy", 0.18f + main * 0.56f
+                        + random.nextFloat() * 0.16f);
+    setNorm("crush", 0.08f + main * 0.40f
+                     + random.nextFloat() * 0.12f);
+    setNorm("decimate", 0.04f + main * 0.30f
+                        + random.nextFloat() * 0.10f);
+    setNorm("drive", 0.10f + main * 0.34f
+                     + random.nextFloat() * 0.10f);
+    setNorm("clip", 0.08f + main * 0.30f);
+    setNorm("shatter", 0.10f + main * 0.55f);
+    setNorm("spectralMix", 0.35f + random.nextFloat() * 0.55f);
+    setNorm("smooth", 0.18f + random.nextFloat() * 0.55f);
+    setNorm("mix", 0.62f + random.nextFloat() * 0.32f);
+    setNorm("output", 0.56f + random.nextFloat() * 0.20f);
+
+    // Keep the dangerous combinations from stacking all at once.
+    float feedback =
+        processor.getAPVTS()
+            .getRawParameterValue("feedback")->load();
+
+    float grainMix =
+        processor.getAPVTS()
+            .getRawParameterValue("grainMix")->load();
+
+    float resonance =
+        processor.getAPVTS()
+            .getRawParameterValue("resonance")->load();
+
+    float shift =
+        processor.getAPVTS()
+            .getRawParameterValue("shift")->load();
+
+    if (feedback > 0.58f)
+    {
+        setNorm(
+            "feedbackDrive",
+            std::min(
+                processor.getAPVTS()
+                    .getRawParameterValue("feedbackDrive")
+                    ->load(),
+                0.46f));
+
+        setNorm(
+            "feedbackDiffusion",
+            std::min(
+                processor.getAPVTS()
+                    .getRawParameterValue("feedbackDiffusion")
+                    ->load(),
+                0.54f));
+
+        setNorm(
+            "grainMix",
+            std::min(grainMix, 0.42f));
+
+        setNorm(
+            "resonance",
+            std::min(resonance, 0.48f));
+    }
+
+    if (grainMix > 0.62f)
+    {
+        setNorm("glitch", std::min(
+            processor.getAPVTS()
+                .getRawParameterValue("glitch")->load(),
+            0.46f));
+
+        setNorm(
+            "feedback",
+            std::min(
+                processor.getAPVTS()
+                    .getRawParameterValue("feedback")
+                    ->load(),
+                0.48f));
+    }
+
+    if (shift > 0.68f)
+    {
+        setNorm(
+            "resonance",
+            std::min(
+                processor.getAPVTS()
+                    .getRawParameterValue("resonance")
+                    ->load(),
+                0.36f));
+    }
+
+    // Avoid choosing the heaviest possible combination too often.
+    setChoice("quality", random.nextFloat() < 0.45f ? 3 : 2);
+    setChoice("mode", 9);
+    setChoice("resampleMode", 5);
+    setChoice("glitchMode", 7);
+    setChoice("glitchLength", 6);
+    setChoice("spectralMode", 6);
+    setChoice("routingTopology", 6);
+    setChoice("characterMode", 10);
+    setChoice("pitchMode", 4);
+    setChoice("fftWindow", 4);
+    setChoice("routing", 4);
+    setChoice("msMode", 4);
+    setChoice("liveScene", 6);
+    setChoice("syncRate", random.nextFloat() < 0.65f ? 5 : 1);
+    setChoice("glitchGrid", 4);
+    setChoice("movementShape", 4);
+    setChoice("modWave", 4);
+    setChoice("modSync", 5);
+
+    // Randomize modulation slots while keeping mostly sparse routing.
+    for (int i = 1; i <= 8; ++i)
+    {
+        setChoice(
+            ("mod" + juce::String(i) + "Source").toRawUTF8(),
+            6);
+
+        setChoice(
+            ("mod" + juce::String(i) + "Dest").toRawUTF8(),
+            10);
+
+        setNorm(
+            ("mod" + juce::String(i) + "Amount").toRawUTF8(),
+            0.22f + random.nextFloat() * 0.56f);
+    }
+
+    // A few parameter relationships are deliberately biased.
+    setNorm("glitchDensity", 0.12f + random.nextFloat() * 0.64f);
+    setNorm("glitchProbability", 0.10f + random.nextFloat() * 0.65f);
+    setNorm("glitchFade", 0.30f + random.nextFloat() * 0.62f);
+    setNorm("timelineMix", 0.15f + random.nextFloat() * 0.70f);
+
+    setNorm("grainDensity", 0.08f + random.nextFloat() * 0.58f);
+    setNorm("grainSize", 0.10f + random.nextFloat() * 0.55f);
+    setNorm("grainSpray", random.nextFloat() * 0.46f);
+    setNorm("grainJitter", random.nextFloat() * 0.42f);
+
+    setNorm("feedbackTime", 0.10f + random.nextFloat() * 0.54f);
+    setNorm("feedbackTone", 0.22f + random.nextFloat() * 0.68f);
+    setNorm("feedbackPitch", 0.30f + random.nextFloat() * 0.40f);
+
+    setNorm("reactiveAmount", random.nextFloat() * 0.78f);
+    setNorm("smartAmount", 0.30f + random.nextFloat() * 0.60f);
+    setNorm("macroCurve", 0.20f + random.nextFloat() * 0.68f);
+
+    // Auto Match and Smart stay available, but Smart is favored for random patches.
+    setNorm(
+        "autoMatch",
+        random.nextFloat() > 0.42f ? 1.0f : 0.0f);
+
+    setNorm(
+        "smart",
+        random.nextFloat() > 0.30f ? 1.0f : 0.0f);
+
+    // Timeline: create a sparse rhythmic pattern rather than eight random blobs.
+    for (int i = 1; i <= 8; ++i)
+    {
+        const float hit =
+            (i == 1 || i == 5)
+                ? 0.55f + random.nextFloat() * 0.40f
+                : random.nextFloat() > 0.65f
+                    ? random.nextFloat() * 0.55f
+                    : 0.0f;
+
+        setNorm(
+            ("timelineStep" + juce::String(i)).toRawUTF8(),
+            hit);
     }
 
     presetBox.setSelectedId(
