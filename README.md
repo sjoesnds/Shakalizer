@@ -1,4 +1,4 @@
-# Shakalizer v3.0
+# Shakalizer v10.0 — Final Release
 
 Shakalizer is a VST3 digital-destruction effect built around controlled digital damage instead of generic harsh distortion.
 
@@ -212,3 +212,39 @@ The existing A/B workflow is complemented by a second C/D snapshot pair for quic
 
 ### Compatibility / Stability
 V7 keeps the V6 parameters intact and appends the new controls. The cleanup layer runs in fixed-size realtime processing, keeps recursive state bounded, and continues to finite-check the final output.
+
+
+## v10.0 — Final Shakalizer Engine
+
+v10 is the final feature-complete workstation pass. Existing parameter identifiers are preserved and the new controls are appended for project compatibility.
+
+### Shakal Engine 2.0
+- **ENGINE MODE:** Digital, Buffer, Memory, Corrupt, Machine, Liquid, Void, Hybrid.
+- **ENGINE DEPTH:** controls how strongly the selected physical failure model is applied.
+- **TEXTURE:** adds controlled digital granularity without turning the output into broadband noise.
+
+### Audio Intelligence
+- **INTELLIGENCE** follows the incoming material instead of applying identical destruction to every sample.
+- **BASS FOCUS**, **TRANSIENT FOCUS** and **PRESENCE FOCUS** bias where destructive energy is allowed to concentrate.
+- The existing **AUDIO AWARE**, **SMART** and **REACTIVE** systems remain active alongside the final intelligence layer.
+
+### Humanized Modulation
+- **MOD CURVE:** Linear, Smooth, Expo, Steps, Saturate and Pulse response shapes.
+- **MOD HUMANIZE** adds small irregularity to active modulation without randomizing the musical intent.
+- **GROOVE** changes how glitch timing and modulation variation follow the rhythmic engine.
+
+### Performance System
+The PERFORM page now has eight momentary actions: **SMASH**, **GLITCH**, **FREEZE**, **FAIL**, **CUT**, **REVERSE**, **SHATTER** and **MELT**.
+
+**PERFORMANCE INTENSITY** scales the strength of all live actions.
+
+### Final Output / Stability
+- **OUTPUT GLUE** adds a small controlled final-stage averaging response and reinforces the safety ceiling.
+- The DC guard is now actually applied to the final sample path.
+- Existing finite-value, recursive-feedback and output-clamp protections remain enabled.
+- The editor remains compact: the final controls live on a dedicated **ENGINE** page instead of expanding the main layout.
+
+### Final feature map
+CORE / GLITCH / SPECTRAL / MOD / GRANULAR / FEEDBACK / REACTIVE / MACRO / PERFORM / ENGINE.
+
+This release is intentionally treated as the feature-complete endpoint of the Shakalizer development line. Further work should be limited to bug fixes, compatibility fixes and maintenance rather than another feature expansion.
