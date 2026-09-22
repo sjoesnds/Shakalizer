@@ -309,8 +309,8 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
 {
     setLookAndFeel(&lookAndFeel);
     setResizable(true, true);
-    setResizeLimits(1180, 820, 2000, 1700);
-    setSize(1900, 1180);
+    setResizeLimits(980, 700, 1500, 1000);
+    setSize(1180, 760);
 
     titleLabel.setText(
         "SHAKALIZER",
@@ -341,6 +341,35 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         muted);
 
     addAndMakeVisible(subtitleLabel);
+
+    pageLabel.setText(
+        "CORE",
+        juce::dontSendNotification);
+    pageLabel.setFont(
+        juce::Font(
+            juce::FontOptions(
+                9.0f,
+                juce::Font::bold)));
+    pageLabel.setColour(
+        juce::Label::textColourId,
+        muted);
+    addAndMakeVisible(pageLabel);
+
+    for (size_t i = 0; i < pageButtons.size(); ++i)
+    {
+        auto& button = pageButtons[i];
+        button.onClick = [this, i]
+        {
+            setPage(static_cast<int>(i));
+        };
+        button.setColour(
+            juce::TextButton::textColourOnId,
+            text);
+        button.setColour(
+            juce::TextButton::textColourOffId,
+            text);
+        addAndMakeVisible(button);
+    }
 
     presetBox.addItem("CUSTOM", 1);
     presetBox.addItemList(
@@ -908,621 +937,257 @@ void ShakalizerAudioProcessorEditor::paint(
 {
     g.fillAll(background);
 
-    const auto outer =
-        getLocalBounds()
-            .reduced(10);
+    auto outer = getLocalBounds().reduced(8);
 
     g.setColour(panel);
-
     g.fillRoundedRectangle(
         outer.toFloat(),
-        15.0f);
+        12.0f);
 
     g.setColour(accent);
-
     g.fillRoundedRectangle(
-        10.0f,
-        10.0f,
-        7.0f,
-        92.0f,
-        3.0f);
-
-    const int leftWidth =
-        286;
+        8.0f, 8.0f, 5.0f,
+        static_cast<float>(getHeight()) - 16.0f,
+        2.0f);
 
     g.setColour(panel2);
-
     g.fillRoundedRectangle(
-        28.0f,
-        116.0f,
-        static_cast<float>(
-            leftWidth - 42),
-        static_cast<float>(
-            getHeight() - 136),
-        13.0f);
-
-    g.setColour(panel2);
-
-    g.fillRoundedRectangle(
-        static_cast<float>(
-            leftWidth),
-        116.0f,
-        static_cast<float>(
-            getWidth() - leftWidth - 26),
-        static_cast<float>(
-            getHeight() - 136),
-        13.0f);
-
-    g.setColour(
-        accent.withAlpha(0.08f));
-
-    g.fillEllipse(
-        47.0f,
-        144.0f,
-        205.0f,
-        205.0f);
-
-    if (getHeight() > 850)
-    {
-        const auto scope =
-            juce::Rectangle<float>(
-                43.0f,
-                static_cast<float>(
-                    getHeight() - 178),
-                218.0f,
-                142.0f);
-
-        g.setColour(
-            juce::Colour::fromRGB(
-                11, 10, 14));
-        g.fillRoundedRectangle(
-            scope,
-            9.0f);
-
-        g.setColour(
-            accent.withAlpha(0.22f));
-        g.drawRoundedRectangle(
-            scope.reduced(0.5f),
-            9.0f,
-            1.0f);
-
-        // FFT spectrum telemetry behind the waveform.
-        const int spectrumBars = 32;
-        const float spectrumBottom = scope.getBottom() - 36.0f;
-
-        for (int bin = 0; bin < spectrumBars; ++bin)
-        {
-            const float level =
-                juce::jlimit(
-                    0.0f,
-                    1.0f,
-                    processor.getSpectrumBin(bin * 2));
-
-            const float barW =
-                scope.getWidth()
-                / static_cast<float>(spectrumBars);
-
-            g.setColour(
-                accent.withAlpha(
-                    0.05f + level * 0.18f));
-
-            g.fillRect(
-                scope.getX() + bin * barW,
-                spectrumBottom - level * (scope.getHeight() * 0.55f),
-                barW - 1.0f,
-                level * (scope.getHeight() * 0.55f));
-        }
-
-        juce::Path wave;
-        const int count = 256;
-        const float centreY =
-            scope.getCentreY();
-        const float halfH =
-            scope.getHeight() * 0.38f;
-
-        for (int i = 0; i < count; ++i)
-        {
-            const int write =
-                processor.getScopeWriteIndex();
-
-            const float value =
-                processor.getScopeSample(
-                    (write + i) & 255);
-            const float x =
-                scope.getX()
-                + static_cast<float>(i)
-                  / static_cast<float>(count - 1)
-                  * scope.getWidth();
-            const float y =
-                centreY - value * halfH;
-
-            if (i == 0)
-                wave.startNewSubPath(x, y);
-            else
-                wave.lineTo(x, y);
-        }
-
-        g.setColour(
-            accent.withAlpha(0.82f));
-        g.strokePath(
-            wave,
-            juce::PathStrokeType(
-                1.15f,
-                juce::PathStrokeType::curved,
-                juce::PathStrokeType::rounded));
-
-        g.setColour(muted);
-        g.setFont(
-            juce::Font(
-                juce::FontOptions(
-                    8.0f,
-                    juce::Font::bold)));
-        g.drawText(
-            "LIVE SCOPE",
-            static_cast<int>(scope.getX() + 8.0f),
-            static_cast<int>(scope.getY() + 6.0f),
-            static_cast<int>(scope.getWidth() - 16.0f),
-            14,
-            juce::Justification::left,
-            false);
-
-        const float barY =
-            scope.getBottom() - 31.0f;
-        const float barW = 42.0f;
-        const float gap = 6.0f;
-        const char* bandNames[] {
-            "LOW", "MID", "HIGH", "AIR"
-        };
-
-        for (int band = 0; band < 4; ++band)
-        {
-            const float level =
-                juce::jlimit(
-                    0.0f,
-                    1.0f,
-                    processor.getBandLevel(band));
-
-            const float bx =
-                scope.getX()
-                + 8.0f
-                + band * (barW + gap);
-
-            g.setColour(
-                juce::Colour::fromRGB(
-                    37, 31, 42));
-
-            g.fillRoundedRectangle(
-                bx,
-                barY,
-                barW,
-                8.0f,
-                3.0f);
-
-            g.setColour(
-                accent.withAlpha(
-                    0.35f
-                    + 0.55f * level));
-
-            g.fillRoundedRectangle(
-                bx,
-                barY,
-                barW * level,
-                8.0f,
-                3.0f);
-
-            g.setColour(muted);
-            g.setFont(
-                juce::Font(
-                    juce::FontOptions(
-                        7.0f,
-                        juce::Font::bold)));
-
-            g.drawText(
-                bandNames[band],
-                static_cast<int>(bx),
-                static_cast<int>(barY + 10.0f),
-                static_cast<int>(barW),
-                11,
-                juce::Justification::centred,
-                false);
-        }
-    }
+        22.0f, 108.0f,
+        static_cast<float>(getWidth()) - 44.0f,
+        static_cast<float>(getHeight()) - 124.0f,
+        10.0f);
 
     g.setColour(line);
+    g.drawHorizontalLine(
+        104,
+        24.0f,
+        static_cast<float>(getWidth()) - 24.0f);
 
-    for (int y : {
-        252, 384, 516,
-        648, 780
-    })
-    {
-        if (y < getHeight() - 20)
-        {
-            g.drawHorizontalLine(
-                y,
-                static_cast<float>(
-                    leftWidth + 18),
-                static_cast<float>(
-                    getWidth() - 35));
-        }
-    }
-
-    g.setFont(
-        juce::Font(
-            juce::FontOptions(
-                9.0f,
-                juce::Font::bold)));
-
-    const std::array<
-        const char*, 6> sections {
-        "CORE",
-        "DYNAMICS",
-        "FILTER",
-        "SHATTER",
-        "CHARACTER",
-        "MOD / MORPH"
-    };
-
-    for (size_t i = 0;
-         i < sections.size();
-         ++i)
-    {
-        g.setColour(muted);
-
-        g.drawText(
-            sections[i],
-            leftWidth + 18,
-            122
-            + static_cast<int>(i) * 132,
-            120,
-            16,
-            juce::Justification::left,
-            false);
-    }
-
-    g.setColour(
-        accent.withAlpha(0.14f));
-
-    g.fillRoundedRectangle(
-        43.0f,
-        140.0f,
-        5.0f,
-        58.0f,
-        2.0f);
+    g.setColour(accent.withAlpha(0.08f));
+    g.fillEllipse(
+        28.0f,
+        124.0f,
+        120.0f,
+        120.0f);
 }
 
 void ShakalizerAudioProcessorEditor::resized()
 {
-    const int w =
-        getWidth();
+    const int w = getWidth();
+    const int h = getHeight();
 
-    titleLabel.setBounds(
-        36,
-        18,
-        260,
-        38);
+    titleLabel.setBounds(30, 15, 190, 32);
+    subtitleLabel.setBounds(30, 44, 255, 15);
 
-    subtitleLabel.setBounds(
-        37,
-        56,
-        290,
-        17);
+    presetBox.setBounds(225, 15, 118, 28);
 
-    presetBox.setBounds(
-        312,
-        18,
-        160,
-        31);
+    saveAButton.setBounds(350, 15, 52, 28);
+    abButton.setBounds(406, 15, 44, 28);
+    autoMatchButton.setBounds(454, 15, 48, 28);
+    smartButton.setBounds(506, 15, 52, 28);
 
-    modeBox.setBounds(
-        480,
-        18,
-        105,
-        31);
+    randomAllButton.setBounds(w - 100, 15, 86, 28);
+    pageLabel.setBounds(w - 214, 18, 104, 20);
 
-    resampleBox.setBounds(
-        593,
-        18,
-        93,
-        31);
+    const int comboY1 = 56;
+    const int comboY2 = 82;
+    const int left = 24;
+    const int right = w - 24;
+    const int gap = 4;
+    const int comboCount = 10;
+    const int comboW =
+        (right - left - gap * (comboCount - 1))
+        / comboCount;
 
-    filterBox.setBounds(
-        694,
-        18,
-        94,
-        31);
+    auto setRow = [&](std::initializer_list<juce::Component*> boxes,
+                      int y)
+    {
+        int x = left;
+        for (auto* box : boxes)
+        {
+            box->setBounds(x, y, comboW, 22);
+            x += comboW + gap;
+        }
+    };
 
-    movementBox.setBounds(
-        796,
-        18,
-        110,
-        31);
+    setRow({
+        &modeBox, &resampleBox, &filterBox, &movementBox,
+        &qualityBox, &syncBox, &glitchGridBox,
+        &glitchModeBox, &glitchLengthBox, &spectralModeBox
+    }, comboY1);
 
-    qualityBox.setBounds(
-        914,
-        18,
-        66,
-        31);
+    setRow({
+        &modWaveBox, &modSyncBox, &routingBox, &msModeBox,
+        &liveSceneBox, &characterModeBox, &fftWindowBox,
+        &pitchModeBox, &routingTopologyBox, &presetBox
+    }, comboY2);
 
-    syncBox.setBounds(
-        988,
-        18,
-        72,
-        31);
+    // Preset is already visible in the header; keep the second-row slot
+    // visually quiet by moving it onto the far-right utility position.
+    presetBox.setBounds(w - 156, 15, 80, 28);
 
-    glitchGridBox.setBounds(
-        1068,
-        18,
-        78,
-        31);
+    for (size_t i = 0; i < pageButtons.size(); ++i)
+    {
+        const int x = 30 + static_cast<int>(i) * 104;
+        pageButtons[i].setBounds(x, 112, 98, 24);
+        pageButtons[i].setToggleState(
+            static_cast<int>(i) == currentPage,
+            juce::dontSendNotification);
+    }
 
-    routingBox.setBounds(
-        1154,
-        18,
-        128,
-        31);
+    const int contentTop = 144;
+    const int contentBottom = h - 18;
+    const int gapX = 2;
+    const int gapY = 2;
+    const int cols = 6;
+    const int availableW = w - 48;
+    const int cellW =
+        (availableW - gapX * (cols - 1)) / cols;
 
-    msModeBox.setBounds(
-        1290,
-        18,
-        78,
-        31);
+    std::vector<int> visible;
+    visible.reserve(static_cast<size_t>(sliderCount));
 
-    liveSceneBox.setBounds(
-        1376,
-        18,
-        95,
-        31);
+    for (int i = 0; i < sliderCount; ++i)
+    {
+        if (sliderBelongsToPage(i, currentPage))
+            visible.push_back(i);
+        else
+            sliders[static_cast<size_t>(i)]->setVisible(false);
+    }
 
-    characterModeBox.setBounds(
-        1481,
-        18,
-        110,
-        31);
-
-    fftWindowBox.setBounds(
-        1597,
-        18,
-        82,
-        31);
-
-    pitchModeBox.setBounds(
-        1685,
-        18,
-        88,
-        31);
-
-    routingTopologyBox.setBounds(
-        1779,
-        18,
-        105,
-        31);
-
-    glitchModeBox.setBounds(
-        920,
-        56,
-        102,
-        26);
-
-    glitchLengthBox.setBounds(
-        1028,
-        56,
-        78,
-        26);
-
-    spectralModeBox.setBounds(
-        1112,
-        56,
-        108,
-        26);
-
-    modWaveBox.setBounds(
-        1228,
-        56,
-        92,
-        26);
-
-    modSyncBox.setBounds(
-        1326,
-        56,
-        88,
-        26);
-
-    saveAButton.setBounds(
-        312,
-        56,
-        67,
-        26);
-
-    abButton.setBounds(
-        385,
-        56,
-        53,
-        26);
-
-    autoMatchButton.setBounds(
-        444,
-        56,
-        55,
-        26);
-
-    smartButton.setBounds(
-        505,
-        56,
-        61,
-        26);
-
-    randomCoreButton.setBounds(
-        582,
-        56,
-        62,
-        26);
-
-    randomShatterButton.setBounds(
-        650,
-        56,
-        78,
-        26);
-
-    randomGlitchButton.setBounds(
-        734,
-        56,
-        70,
-        26);
-
-    randomAllButton.setBounds(
-        810,
-        56,
-        103,
-        26);
-
-    randomModButton.setBounds(
-        1056,
-        87,
-        58,
-        23);
-
-    savePresetButton.setBounds(
-        926,
-        87,
-        58,
-        23);
-
-    loadPresetButton.setBounds(
-        990,
-        87,
-        58,
-        23);
-
-    favoritePresetButton.setBounds(
-        1054,
-        87,
-        50,
-        23);
-
-    meterLabel.setBounds(
-        1415,
-        52,
-        30,
-        12);
-
-    cpuLabel.setBounds(
-        1415,
-        70,
-        44,
-        12);
-
-    meter.setBounds(
-        1466,
-        53,
-        7,
-        30);
-
-    shakalSlider.setBounds(
-        48,
-        178,
-        215,
-        165);
-
-    characterModeBox.setBounds(
-        48,
-        352,
-        198,
-        28);
-
-    const int left = 315;
-    const int top = 140;
-    const int availableWidth =
-        w - left - 35;
-
-    const int cols = 7;
     const int rows =
         juce::jmax(
             1,
-            (sliderCount - 1 + cols - 1) / cols);
-    const int gap = 4;
-
-    const int cellW =
-        (availableWidth
-         - gap * (cols - 1))
-        / cols;
-
-    const int bottom =
-        getHeight()
-        - 22;
+            (static_cast<int>(visible.size()) + cols - 1) / cols);
 
     const int cellH =
-        (bottom
-         - top
-         - gap * (rows - 1))
-        / rows;
+        juce::jmax(
+            54,
+            (contentBottom - contentTop
+             - gapY * (rows - 1))
+            / rows);
 
-    // First five rows of the right-hand controls are the 35 parameters
-    // after the large SHAKAL macro.
-    for (int i = 1;
-         i < sliderCount;
-         ++i)
+    for (size_t n = 0; n < visible.size(); ++n)
     {
-        const int local =
-            i - 1;
+        const int index = visible[n];
+        const int row = static_cast<int>(n) / cols;
+        const int col = static_cast<int>(n) % cols;
 
-        const int row =
-            local / cols;
+        auto* slider = sliders[static_cast<size_t>(index)];
 
-        const int col =
-            local % cols;
-
-        sliders[
-            static_cast<size_t>(i)]
-            ->setBounds(
-                left
-                + col * (cellW + gap),
-                top
-                + row * (cellH + gap),
-                cellW,
-                cellH);
+        slider->setVisible(true);
+        slider->setBounds(
+            24 + col * (cellW + gapX),
+            contentTop + row * (cellH + gapY),
+            cellW,
+            cellH);
     }
 
-    // The modulation controls are placed over the left-lower panel.
-    const int modY = 390;
+    // The modulation matrix is only shown on the MOD page.
+    const bool modPage = currentPage == 3;
 
-    for (int i = 0;
-         i < 8;
-         ++i)
+    for (int i = 0; i < 8; ++i)
     {
-        const int y =
-            modY + i * 57;
+        auto* source = modSourceBoxes[static_cast<size_t>(i)];
+        auto* dest = modDestBoxes[static_cast<size_t>(i)];
 
-        modSourceBoxes[
-            static_cast<size_t>(i)]
-            ->setBounds(
-                42,
-                y,
-                92,
-                27);
+        source->setVisible(modPage);
+        dest->setVisible(modPage);
 
-        modDestBoxes[
-            static_cast<size_t>(i)]
-            ->setBounds(
-                140,
-                y,
-                105,
-                27);
-
-        sliders[
-            static_cast<size_t>(
-                31 + i)]
-            ->setBounds(
-                45,
-                y + 28,
-                198,
-                30);
+        if (modPage)
+        {
+            const int y = contentTop + i * 56;
+            source->setBounds(30, y + 8, 104, 22);
+            dest->setBounds(138, y + 8, 112, 22);
+        }
     }
 
-    meter.setBounds(
-        w - 26,
-        56,
-        7,
-        30);
+    // On MOD page, place the 8 modulation amount controls in the right area.
+    if (modPage)
+    {
+        for (int i = 0; i < 8; ++i)
+        {
+            sliders[static_cast<size_t>(31 + i)]
+                ->setVisible(false);
+
+            sliders[static_cast<size_t>(31 + i)]
+                ->setBounds(260, contentTop + i * 56, 150, 48);
+        }
+    }
+
+    meterLabel.setBounds(w - 96, 46, 34, 12);
+    cpuLabel.setBounds(w - 58, 46, 46, 12);
+    meter.setBounds(w - 26, 44, 7, 30);
+}
+
+void ShakalizerAudioProcessorEditor::setPage(int page)
+{
+    currentPage =
+        juce::jlimit(
+            0,
+            static_cast<int>(pageButtons.size()) - 1,
+            page);
+
+    static const char* names[] {
+        "CORE", "GLITCH", "SPECTRAL", "MOD",
+        "GRANULAR", "FEEDBACK", "REACTIVE"
+    };
+
+    pageLabel.setText(
+        names[currentPage],
+        juce::dontSendNotification);
+
+    for (size_t i = 0; i < pageButtons.size(); ++i)
+    {
+        pageButtons[i].setToggleState(
+            static_cast<int>(i) == currentPage,
+            juce::dontSendNotification);
+    }
+
+    resized();
+    repaint();
+}
+
+bool ShakalizerAudioProcessorEditor::sliderBelongsToPage(
+    int i, int page) const noexcept
+{
+    switch (page)
+    {
+        case 0: // Core.
+            return (i >= 0 && i <= 18)
+                || (i >= 28 && i <= 30);
+
+        case 1: // Glitch / timeline.
+            return i == 6 || i == 7
+                || (i >= 35 && i <= 39)
+                || (i >= 68 && i <= 76);
+
+        case 2: // Spectral / FFT.
+            return (i >= 19 && i <= 27)
+                || (i >= 40 && i <= 44)
+                || (i >= 56 && i <= 62)
+                || (i >= 77 && i <= 79);
+
+        case 3: // Modulation matrix.
+            return (i >= 31 && i <= 34)
+                || (i >= 45 && i <= 47)
+                || (i >= 52 && i <= 55);
+
+        case 4: // Granular.
+            return (i >= 63 && i <= 66)
+                || (i >= 80 && i <= 84);
+
+        case 5: // Feedback.
+            return (i >= 67 && i <= 67)
+                || (i >= 85 && i <= 90);
+
+        case 6: // Reactive / pitch.
+            return (i >= 48 && i <= 51)
+                || (i >= 91 && i <= 100);
+
+        default:
+            return false;
+    }
 }
 
 void ShakalizerAudioProcessorEditor::timerCallback()
