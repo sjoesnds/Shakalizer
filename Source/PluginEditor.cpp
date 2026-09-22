@@ -1349,7 +1349,7 @@ void ShakalizerAudioProcessorEditor::setPage(int page)
 
     static const char* names[] {
         "CORE", "GLITCH", "SPECTRAL", "MOD",
-        "GRANULAR", "FEEDBACK", "REACTIVE", "MACRO", "PERFORM"
+        "GRANULAR", "FEEDBACK", "REACTIVE", "MACRO", "PERFORM", "ENGINE"
     };
 
     pageLabel.setText(
