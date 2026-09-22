@@ -514,6 +514,10 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
     routingTopologyBox.addItemList(
         { "Serial", "Parallel", "Split", "Crossfade",
           "Feedback Loop", "Wide" }, 1);
+    engineModeBox.addItemList(
+        { "Digital", "Buffer", "Memory", "Corrupt", "Machine", "Liquid", "Void", "Hybrid" }, 1);
+    modCurveBox.addItemList(
+        { "Linear", "Smooth", "Expo", "Steps", "Saturate", "Pulse" }, 1);
 
     for (auto* box : {
         &presetBox, &modeBox, &resampleBox, &filterBox,
@@ -626,6 +630,18 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
             juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
                 processor.getAPVTS(), "routingTopology", routingTopologyBox);
 
+    engineModeAttachment =
+        std::make_unique<
+            juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+                processor.getAPVTS(), "engineMode", engineModeBox);
+    modCurveAttachment =
+        std::make_unique<
+            juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+                processor.getAPVTS(), "modCurve", modCurveBox);
+
+    addAndMakeVisible(engineModeBox);
+    addAndMakeVisible(modCurveBox);
+
 
     presetBox.onChange = [this]
     {
@@ -732,6 +748,23 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         processor.triggerFail();
     };
 
+    cutButton.onClick = [this]
+    {
+        processor.triggerCut();
+    };
+    reverseButton.onClick = [this]
+    {
+        processor.triggerReverse();
+    };
+    shatterButton.onClick = [this]
+    {
+        processor.triggerShatter();
+    };
+    meltButton.onClick = [this]
+    {
+        processor.triggerMelt();
+    };
+
     autoMatchButton.onClick = [this]
     {
         toggleAutoMatch();
@@ -814,6 +847,10 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         &failButton,
         &autoMatchButton,
         &smartButton,
+        &cutButton,
+        &reverseButton,
+        &shatterButton,
+        &meltButton,
         &randomAllButton,
         &savePresetButton,
         &loadPresetButton,
@@ -907,7 +944,10 @@ ShakalizerAudioProcessorEditor::ShakalizerAudioProcessorEditor(
         "macroCurve", "sceneMorphTime",
         "damageMacro", "motionMacro", "chaosMacro", "spaceMacro",
         "antiNoise", "antiDc", "antiAir", "antiPeak",
-        "humanRandom", "audioAware", "chaosShape"
+        "humanRandom", "audioAware", "chaosShape",
+        "engineDepth", "intelligence", "bassFocus", "transientFocus",
+        "presenceFocus", "groove", "modHumanize", "performanceIntensity",
+        "outputGlue", "texture"
     }};
 
     for (int i = 0;
