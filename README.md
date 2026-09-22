@@ -142,3 +142,21 @@ v4 keeps fixed-size realtime buffers and avoids dynamic allocation in the audio-
 - Feedback recursion is hard-limited and invalid feedback states are reset.
 - Auto Match gain is finite-checked and bounded.
 - Final output keeps finite-sample and safety limiting protection.
+
+
+## v5.0 — Release Candidate
+
+The v5 pass is a final polish cycle rather than another feature dump.
+
+- SHAKAL is now a true multi-parameter character macro with a controllable macro curve.
+- Smart Random first explores the full parameter space, then constrains conflicting combinations to produce more usable patches.
+- Glitch triggering is shared across stereo channels for coherent events.
+- Free glitch mode has a practical event density instead of extremely sparse random triggering.
+- FFT bypass uses a direct block copy rather than a nested sample loop.
+- Dynamic filter updates are cached when the cutoff has not materially changed.
+- Feedback recursion and Auto Match are bounded and finite-checked.
+- The editor is compact by default at 1180x650, with a 980x620 minimum size.
+- All 101 controls are grouped into seven compact pages: CORE, GLITCH, SPECTRAL, MOD, GRANULAR, FEEDBACK and REACTIVE.
+- RANDOM ALL remains global and still randomizes the complete processor parameter list, including modes, routing, modulation, quality, sync and boolean parameters.
+
+The release-candidate gate is: clean Windows VST3 build, artifact packaging, FL Studio automation/state testing, multiple-instance testing, bypass testing and no observed invalid audio output.
